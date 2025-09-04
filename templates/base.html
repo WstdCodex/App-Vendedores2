@@ -40,7 +40,19 @@
         }
         
         .navbar {
-            background: rgba(255,255,255,0.95) !important;
+            background: linear-gradient(
+                90deg,
+                #0b0b0b 0%,
+                #1e1e1e 50%,
+                #3a3a3a 70%,
+                #4a4a4a 80%,
+                #5a5a5a 90%,
+                #6a6a6a 95%,
+                #777777 100%
+            ) !important;
+            color: #fff;
+            padding: 20px;
+            text-align: center;
             backdrop-filter: blur(10px);
             border-bottom: 1px solid rgba(255,255,255,0.2);
         }
@@ -134,9 +146,9 @@
 </head>
 <body>
     <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-light">
+    <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container-fluid">
-            <a class="navbar-brand fw-bold text-primary" href="{{ url_for('dashboard') }}">
+            <a class="navbar-brand fw-bold" href="{{ url_for('dashboard') }}">
                 <img src="{{ url_for('static', filename='image.png') }}" alt="App Vendedores" height="40">
             </a>
             
