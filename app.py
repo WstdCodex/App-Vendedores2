@@ -10,7 +10,7 @@ app.secret_key = 'tu_clave_secreta_aqui'  # Cambiar por una clave segura
 # Configuración de Odoo - Ajustar según tu instalación
 ODOO_CONFIG = {
     'url': 'https://wstd.ar',  # URL de tu servidor Odoo
-    'db': 'nombre_de_tu_base_de_datos',  # Nombre de tu base de datos Odoo
+    'db': 'odoo',  # Nombre de tu base de datos Odoo
 }
 
 @app.route('/')
