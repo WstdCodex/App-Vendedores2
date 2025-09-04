@@ -149,7 +149,9 @@
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container-fluid">
             <a class="navbar-brand fw-bold" href="{{ url_for('dashboard') }}">
-                <img src="{{ url_for('static', filename='image.png') }}" alt="App Vendedores" height="40">
+                <div style="background-color:#0b0b0b; display:inline-block;">
+                    <img src="{{ url_for('static', filename='image.png') }}" alt="App Vendedores" height="40">
+                </div>
             </a>
             
             {% if session.user_id %}
