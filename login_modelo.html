@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - App Full</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="logo-container">
+                <div class="logo">
+
+                    <img src="{{ url_for('static', filename='img/image.png') }}" alt="logo">
+
+
+                    <img src="{{ url_for('static', filename='img/WStandard.png') }}" alt="logo WStandard">
+
+                    <img src="{{ url_for('static', filename='img/WStandard.png') }}" alt="logo WStandard" width="600">
+
+
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <div class="bg-gray-100 min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-md w-full">
+            <div class="bg-white py-8 px-6 shadow rounded-lg">
+                <h2 class="text-2xl font-bold text-gray-900 text-center mb-8">
+                    Gestión de Batches
+                </h2>
+                <h3 class="text-xl mb-4">Iniciar Sesión</h3>
+
+                <div id="errorMessage" class="hidden p-4 mb-4 rounded bg-red-100 text-red-700"></div>
+                
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                {% for category, message in messages %}
+                <div class="mb-4 p-4 rounded {% if category == 'error' %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+                {% endif %}
+                {% endwith %}
+
+                <form id="loginForm" onsubmit="return handleLogin(event)" class="space-y-6">
+                    <div>
+                        <label for="username" class="block text-sm font-medium text-gray-700">
+                            Usuario
+                        </label>
+                        <input type="text" name="username" id="username" required
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <div>
+                        <label for="password" class="block text-sm font-medium text-gray-700">
+                            Contraseña
+                        </label>
+                        <input type="password" name="password" id="password" required
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <div>
+                        <button type="submit"
+                            class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            Iniciar Sesión
+                        </button>
+                    </div>
+                </form>
+                
+                <div class="mt-4 text-xs text-gray-500 text-center">
+                    Nota: Después de {{ config['MAX_LOGIN_ATTEMPTS'] }} intentos fallidos, su cuenta será bloqueada temporalmente.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function handleLogin(event) {
+            event.preventDefault();
+            const errorMessage = document.getElementById('errorMessage');
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    window.location.href = '/';
+                } else {
+                    errorMessage.textContent = data.message;
+                    errorMessage.classList.remove('hidden');
+                }
+            } catch (error) {
+                errorMessage.textContent = 'Error al intentar iniciar sesión';
+                errorMessage.classList.remove('hidden');
+            }
+
+            return false;
+        }
+    </script>
+</body>
+
+</html>
