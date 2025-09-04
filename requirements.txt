@@ -1,0 +1,109 @@
+# requirements.txt
+Flask==2.3.3
+Werkzeug==2.3.7
+
+# Para desarrollo (opcional)
+python-dotenv==1.0.0
+
+# static/style.css (archivo CSS adicional si se necesita personalización extra)
+/* Estilos adicionales para la aplicación */
+.mobile-optimized {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+@media (max-width: 576px) {
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .search-container {
+        padding: 15px;
+    }
+    
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+    
+    .badge {
+        font-size: 0.75rem;
+        padding: 4px 8px;
+    }
+}
+
+/* Mejoras para la experiencia móvil */
+.btn-mobile {
+    padding: 12px 20px;
+    font-size: 16px;
+}
+
+.form-control-mobile {
+    font-size: 16px; /* Evita zoom en iOS */
+}
+
+/* Animaciones suaves */
+.card {
+    transition: transform 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+# config.py (Archivo de configuración opcional)
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+class Config:
+    SECRET_KEY = os.environ.get('SECRET_KEY') or 'tu-clave-secreta-muy-segura-aqui'
+    
+    # Configuración de Odoo
+    ODOO_URL = os.environ.get('ODOO_URL') or 'http://localhost:8069'
+    ODOO_DB = os.environ.get('ODOO_DB') or 'nombre_de_tu_base_de_datos'
+    
+    # Configuración de Flask
+    DEBUG = os.environ.get('FLASK_DEBUG') or False
+
+# .env (archivo de variables de entorno - ejemplo)
+# Copiar a .env y ajustar valores
+SECRET_KEY=tu-clave-secreta-muy-segura-aqui
+ODOO_URL=http://tu-servidor-odoo:8069
+ODOO_DB=nombre_de_tu_base_de_datos
+FLASK_DEBUG=True
+
+# run.py (archivo alternativo para ejecutar la aplicación)
+from app import app
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)
+
+# Dockerfile (para containerización - opcional)
+FROM python:3.9-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+EXPOSE 5000
+
+CMD ["python", "app.py"]
+
+# docker-compose.yml (para desarrollo con Docker - opcional)
+version: '3.8'
+services:
+  vendedores-app:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_DEBUG=True
+      - ODOO_URL=http://odoo-server:8069
+      - ODOO_DB=nombre_base_datos
+    volumes:
+      - .:/app
+    restart: unless-stopped
