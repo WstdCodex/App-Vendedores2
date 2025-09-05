@@ -566,6 +566,7 @@ class OdooConnection:
             last_exception = None
             for report_name in report_names:
                 try:
+
                     # Odoo puede exponer distintos métodos para generar PDFs.
                     # Intentamos primero con ``render_qweb_pdf`` y si no existe,
                     # probamos con ``get_pdf`` que está disponible en versiones
@@ -588,6 +589,7 @@ class OdooConnection:
                             'get_pdf',
                             [report_name, [factura_id]],
                         )
+
                     break
                 except Exception as e1:
                     last_exception = e1
@@ -629,6 +631,7 @@ class OdooConnection:
 
                 report_id = report[0]['id']
 
+
                 try:
                     pdf = self.models.execute_kw(
                         self.db,
@@ -647,6 +650,7 @@ class OdooConnection:
                         'get_pdf',
                         [report_id, [factura_id]],
                     )
+
 
                 if isinstance(pdf, dict) and pdf.get('result'):
                     pdf_content = pdf['result']
