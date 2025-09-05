@@ -103,7 +103,7 @@ def cliente_detalle(cliente_id):
         odoo.uid = session['user_id']
 
         cliente_info = odoo.get_cliente(cliente_id)
-        facturas = odoo.get_facturas_cliente(session['user_id'], cliente_id)
+        facturas = odoo.get_facturas_cliente(cliente_id)
 
         return render_template('cliente_detalle.html', cliente=cliente_info, facturas=facturas)
     except Exception as e:
@@ -158,8 +158,7 @@ def api_facturas_cliente(cliente_id):
                               session['username'], session['password'])
         odoo.uid = session['user_id']
 
-        facturas = odoo.get_facturas_cliente(session['user_id'], cliente_id,
-                                            codigo_factura, estado_filtro)
+        facturas = odoo.get_facturas_cliente(cliente_id, codigo_factura, estado_filtro)
         return jsonify(facturas)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
