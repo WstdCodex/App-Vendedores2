@@ -1,6 +1,6 @@
 # odoo_connection.py
 import xmlrpc.client
-from datetime import datetime
+from datetime import datetime, date
 
 class OdooConnection:
     def __init__(self, url, db, username, password):
@@ -72,6 +72,17 @@ class OdooConnection:
             return 'partial'
         return 'not_paid'
 
+    def _format_date(self, value):
+        """Convertir fechas de Odoo a formato legible."""
+        if isinstance(value, (datetime, date)):
+            return value.strftime('%d/%m/%Y')
+        if isinstance(value, str):
+            try:
+                return datetime.strptime(value, '%Y-%m-%d').strftime('%d/%m/%Y')
+            except ValueError:
+                return value
+        return ''
+
     def get_vendedor_facturas(self, user_id):
         """Obtener facturas del vendedor"""
         try:
@@ -105,7 +116,7 @@ class OdooConnection:
                 facturas_formateadas.append({
                     'id': factura['id'],
                     'nombre': factura['name'],
-                    'fecha': factura['invoice_date'].strftime('%d/%m/%Y') if factura['invoice_date'] else '',
+                    'fecha': self._format_date(factura.get('invoice_date')),
                     'cliente': factura.get('invoice_partner_display_name', 'Sin cliente'),
                     'total': factura['amount_total'],
                     'pendiente': factura['amount_residual'],
@@ -156,7 +167,7 @@ class OdooConnection:
                 facturas_filtradas.append({
                     'id': factura['id'],
                     'nombre': factura['name'],
-                    'fecha': factura['invoice_date'].strftime('%d/%m/%Y') if factura['invoice_date'] else '',
+                    'fecha': self._format_date(factura.get('invoice_date')),
                     'cliente': factura.get('invoice_partner_display_name', 'Sin cliente'),
                     'total': factura['amount_total'],
                     'pendiente': factura['amount_residual'],
@@ -262,7 +273,7 @@ class OdooConnection:
                 facturas_formateadas.append({
                     'id': factura['id'],
                     'nombre': factura['name'],
-                    'fecha': factura['invoice_date'].strftime('%d/%m/%Y') if factura['invoice_date'] else '',
+                    'fecha': self._format_date(factura.get('invoice_date')),
                     'total': factura['amount_total'],
                     'pendiente': factura['amount_residual'],
                     'estado': estado_pago,
