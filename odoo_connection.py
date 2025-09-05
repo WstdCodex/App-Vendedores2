@@ -170,47 +170,36 @@ class OdooConnection:
             return []
 
     def buscar_clientes(self, user_id, nombre_cliente=''):
-        """Buscar clientes por nombre"""
+        """Buscar clientes asignados al vendedor"""
         try:
             domain = [
-                ('move_type', '=', 'out_invoice'),
-                ('invoice_user_id', '=', user_id),
-                ('state', '!=', 'draft')
+                ('user_id', '=', user_id),
+                ('customer_rank', '>', 0)
             ]
             if nombre_cliente:
-                clientes_ids = self.models.execute_kw(
-                    self.db, self.uid, self.password,
-                    'res.partner', 'search',
-                    [[('name', 'ilike', nombre_cliente)]]
-                )
-                if not clientes_ids:
-                    return []
-                domain.append(('partner_id', 'in', clientes_ids))
+                domain.append(('name', 'ilike', nombre_cliente))
 
-            facturas_ids = self.models.execute_kw(
+            clientes_ids = self.models.execute_kw(
                 self.db, self.uid, self.password,
-                'account.move', 'search', [domain]
+                'res.partner', 'search', [domain]
             )
-            if not facturas_ids:
+            if not clientes_ids:
                 return []
 
-            facturas = self.models.execute_kw(
+            clientes = self.models.execute_kw(
                 self.db, self.uid, self.password,
-                'account.move', 'read',
-                [facturas_ids],
-                {'fields': ['partner_id']}
+                'res.partner', 'read',
+                [clientes_ids],
+                {'fields': ['name']}
             )
 
-            clientes_dict = {}
-            for factura in facturas:
-                if factura['partner_id']:
-                    partner_id = factura['partner_id'][0]
-                    partner_name = factura['partner_id'][1]
-                    clientes_dict[partner_id] = {
-                        'id': partner_id,
-                        'nombre': partner_name
-                    }
-            return list(clientes_dict.values())
+            return [
+                {
+                    'id': c['id'],
+                    'nombre': c.get('name', '')
+                }
+                for c in clientes
+            ]
         except Exception as e:
             print(f"Error buscando clientes: {e}")
             return []
