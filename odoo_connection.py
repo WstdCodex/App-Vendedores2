@@ -182,13 +182,16 @@ class OdooConnection:
             return []
 
     def buscar_clientes(self, nombre_cliente: str = '', user_id: int = None, limit: int = 20):
-        """Buscar clientes en Odoo.
+        """Buscar clientes en Odoo asignados a un vendedor.
 
-        Solo se devolverán los clientes asignados al usuario indicado.
-        Se limita el número de resultados para evitar demoras al
-        consultar grandes cantidades de registros."""
+        Solo se devolverán los clientes cuyo vendedor responsable
+        coincida con el identificador proporcionado. Se limita el número
+        de resultados para evitar demoras al consultar grandes cantidades
+        de registros."""
         try:
-            domain = [('customer_rank', '>', 0)]
+            domain = [
+                ('customer_rank', '>', 0),
+            ]
             if nombre_cliente:
                 domain.append(('name', 'ilike', nombre_cliente))
             if user_id is not None:
