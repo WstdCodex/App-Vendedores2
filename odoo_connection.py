@@ -337,12 +337,12 @@ class OdooConnection:
     def get_factura_pdf(self, factura_id):
         """Obtener el PDF de una factura"""
         try:
-            report_id = self.models.execute_kw(
+            report_model, report_id = self.models.execute_kw(
                 self.db,
                 self.uid,
                 self.password,
                 'ir.model.data',
-                'xmlid_to_res_id',
+                'xmlid_to_res_model_res_id',
                 ['account.report_invoice'],
             )
             pdf = self.models.execute_kw(
@@ -351,7 +351,7 @@ class OdooConnection:
                 self.password,
                 'ir.actions.report',
                 '_render_qweb_pdf',
-                [[report_id], [factura_id]],
+                [report_id, [factura_id]],
             )
             if isinstance(pdf, dict) and pdf.get('result'):
                 pdf_content = pdf['result']
