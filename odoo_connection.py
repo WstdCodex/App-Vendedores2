@@ -571,7 +571,7 @@ class OdooConnection:
                         self.uid,
                         self.password,
                         'ir.actions.report',
-                        '_render_qweb_pdf',
+                        'render_qweb_pdf',
                         [report_name, [factura_id]],
                     )
                     break
@@ -620,7 +620,7 @@ class OdooConnection:
                     self.uid,
                     self.password,
                     'ir.actions.report',
-                    '_render_qweb_pdf',
+                    'render_qweb_pdf',
                     [report_id, [factura_id]],
                 )
 
