@@ -411,35 +411,101 @@ class OdooConnection:
     def get_factura_pdf(self, factura_id):
         """Obtener el PDF de una factura"""
         try:
-            # ``xmlid_to_res_model_res_id`` está disponible en Odoo 15 y
-            # devuelve una tupla ``(model, res_id)``. Usamos este método
-            # para obtener el identificador del reporte evitando el uso de
-            # ``xmlid_to_res_id``, retirado en versiones recientes.
-            _, report_id = self.models.execute_kw(
-                self.db,
-                self.uid,
-                self.password,
-                'ir.model.data',
-                'xmlid_to_res_model_res_id',
-                ['account.report_invoice'],
-            )
-
+            # Método 1: Usar _render_qweb_pdf directamente con el nombre del reporte
             pdf = self.models.execute_kw(
                 self.db,
                 self.uid,
                 self.password,
                 'ir.actions.report',
                 '_render_qweb_pdf',
-                [report_id, [factura_id]],
+                ['account.report_invoice', [factura_id]],
             )
 
+            # Procesar el resultado del PDF
             if isinstance(pdf, dict) and pdf.get('result'):
                 pdf_content = pdf['result']
+            elif isinstance(pdf, (list, tuple)) and len(pdf) > 0:
+                pdf_content = pdf[0]
             else:
-                pdf_content = pdf[0] if isinstance(pdf, (list, tuple)) else pdf
+                pdf_content = pdf
 
-            return base64.b64decode(pdf_content) if isinstance(pdf_content, str) else pdf_content
+            # Decodificar si es string base64
+            if isinstance(pdf_content, str):
+                return base64.b64decode(pdf_content)
+            else:
+                return pdf_content
+
         except Exception as e:
-            print(f"Error obteniendo PDF de factura: {e}")
-            return None
+            print(f"Método 1 falló: {e}")
+            try:
+                # Método 2: Buscar el reporte por su external_id y usar su ID
+                report_data = self.models.execute_kw(
+                    self.db,
+                    self.uid,
+                    self.password,
+                    'ir.model.data',
+                    'search_read',
+                    [[('name', '=', 'report_invoice'), ('module', '=', 'account')]],
+                    {'fields': ['res_id']}
+                )
+
+                if not report_data:
+                    print("No se encontró el reporte de factura")
+                    return None
+
+                report_id = report_data[0]['res_id']
+
+                pdf = self.models.execute_kw(
+                    self.db,
+                    self.uid,
+                    self.password,
+                    'ir.actions.report',
+                    '_render_qweb_pdf',
+                    [report_id, [factura_id]],
+                )
+
+                # Procesar el resultado del PDF
+                if isinstance(pdf, dict) and pdf.get('result'):
+                    pdf_content = pdf['result']
+                elif isinstance(pdf, (list, tuple)) and len(pdf) > 0:
+                    pdf_content = pdf[0]
+                else:
+                    pdf_content = pdf
+
+                # Decodificar si es string base64
+                if isinstance(pdf_content, str):
+                    return base64.b64decode(pdf_content)
+                else:
+                    return pdf_content
+
+            except Exception as e2:
+                print(f"Método 2 también falló: {e2}")
+                try:
+                    # Método 3: Usar render_qweb_pdf alternativo
+                    pdf = self.models.execute_kw(
+                        self.db,
+                        self.uid,
+                        self.password,
+                        'ir.actions.report',
+                        'render_qweb_pdf',
+                        ['account.report_invoice', [factura_id]],
+                    )
+
+                    # Procesar el resultado del PDF
+                    if isinstance(pdf, dict) and pdf.get('result'):
+                        pdf_content = pdf['result']
+                    elif isinstance(pdf, (list, tuple)) and len(pdf) > 0:
+                        pdf_content = pdf[0]
+                    else:
+                        pdf_content = pdf
+
+                    # Decodificar si es string base64
+                    if isinstance(pdf_content, str):
+                        return base64.b64decode(pdf_content)
+                    else:
+                        return pdf_content
+
+                except Exception as e3:
+                    print(f"Error obteniendo PDF de factura (todos los métodos fallaron): {e3}")
+                    return None
 
