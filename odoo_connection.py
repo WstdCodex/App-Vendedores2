@@ -182,6 +182,7 @@ class OdooConnection:
             return []
 
     def get_provincias(self):
+
         """Obtener solo las provincias argentinas disponibles en Odoo."""
         try:
             # Buscar el país Argentina por su código ISO
@@ -198,13 +199,16 @@ class OdooConnection:
             if not country_ids:
                 return []
 
+
             provincias = self.models.execute_kw(
                 self.db,
                 self.uid,
                 self.password,
                 'res.country.state',
                 'search_read',
+
                 [[('country_id', '=', country_ids[0])]],
+
                 {
                     'fields': ['name'],
                     'order': 'name ASC'
