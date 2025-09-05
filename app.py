@@ -111,13 +111,34 @@ def descargar_factura_pdf(factura_id):
         odoo.uid = session['user_id']
 
         pdf_content = odoo.get_factura_pdf(factura_id)
-        if not pdf_content:
-            flash('No se pudo generar el PDF de la factura', 'error')
+        if pdf_content:
+            response = Response(pdf_content, mimetype='application/pdf')
+            response.headers['Content-Disposition'] = (
+                f'attachment; filename=factura_{factura_id}.pdf'
+            )
+            return response
+
+        # Si no se pudo generar el PDF, devolvemos la factura en texto plano.
+        factura = odoo.get_factura(factura_id)
+        if not factura:
+            flash('No se pudo obtener la información de la factura', 'error')
             return redirect(request.referrer or url_for('dashboard'))
 
-        response = Response(pdf_content, mimetype='application/pdf')
+        lines = [
+            f"Descripción: {l['descripcion']} - Cantidad: {l['cantidad']} - Precio: {l['precio_unitario']} - Subtotal: {l['subtotal']}"
+            for l in factura.get('lineas', [])
+        ]
+        text_content = (
+            f"Factura: {factura['nombre']}\n"
+            f"Fecha: {factura['fecha']}\n"
+            f"Cliente: {factura['cliente']}\n"
+            f"Total: {factura['total']}\n\n"
+            + "\n".join(lines)
+        )
+
+        response = Response(text_content, mimetype='text/plain')
         response.headers['Content-Disposition'] = (
-            f'attachment; filename=factura_{factura_id}.pdf'
+            f'attachment; filename=factura_{factura_id}.txt'
         )
         return response
     except Exception as e:
