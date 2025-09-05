@@ -196,19 +196,33 @@ class OdooConnection:
                 return []
 
             clientes = self.models.execute_kw(
-                self.db, self.uid, self.password,
-                'res.partner', 'read',
+                self.db,
+                self.uid,
+                self.password,
+                'res.partner',
+                'read',
                 [clientes_ids],
-                {'fields': ['name']}
+                {
+                    'fields': ['name', 'credit', 'debit']
+                },
             )
 
-            return [
-                {
-                    'id': c['id'],
-                    'nombre': c.get('name', '')
-                }
-                for c in clientes
-            ]
+            clientes_formateados = []
+            for c in clientes:
+                credito = c.get('credit', 0.0)
+                debito = c.get('debit', 0.0)
+                deuda_total = max(credito - debito, 0.0)
+                saldo_favor = max(debito - credito, 0.0)
+                clientes_formateados.append(
+                    {
+                        'id': c['id'],
+                        'nombre': c.get('name', ''),
+                        'deuda_total': deuda_total,
+                        'saldo_favor': saldo_favor,
+                    }
+                )
+
+            return clientes_formateados
         except Exception as e:
             print(f"Error buscando clientes: {e}")
             return []
@@ -217,19 +231,30 @@ class OdooConnection:
         """Obtener información del cliente"""
         try:
             cliente = self.models.execute_kw(
-                self.db, self.uid, self.password,
-                'res.partner', 'read',
+                self.db,
+                self.uid,
+                self.password,
+                'res.partner',
+                'read',
                 [partner_id],
-                {'fields': ['name', 'email', 'phone', 'street']}
+                {
+                    'fields': ['name', 'email', 'phone', 'street', 'credit', 'debit']
+                },
             )
             if cliente:
                 c = cliente[0]
+                credito = c.get('credit', 0.0)
+                debito = c.get('debit', 0.0)
+                deuda_total = max(credito - debito, 0.0)
+                saldo_favor = max(debito - credito, 0.0)
                 return {
                     'id': c.get('id'),
                     'nombre': c.get('name', ''),
                     'email': c.get('email', ''),
                     'telefono': c.get('phone', ''),
-                    'direccion': c.get('street', '')
+                    'direccion': c.get('street', ''),
+                    'deuda_total': deuda_total,
+                    'saldo_favor': saldo_favor,
                 }
             return {}
         except Exception as e:
