@@ -408,14 +408,24 @@ class OdooConnection:
     def get_factura_pdf(self, factura_id):
         """Obtener el PDF de una factura"""
         try:
-            report_model, report_id = self.models.execute_kw(
-                self.db,
-                self.uid,
-                self.password,
-                'ir.model.data',
-                'xmlid_to_res_model_res_id',
-                ['account.report_invoice'],
-            )
+            try:
+                _, report_id = self.models.execute_kw(
+                    self.db,
+                    self.uid,
+                    self.password,
+                    'ir.model.data',
+                    'xmlid_to_res_model_res_id',
+                    ['account.report_invoice'],
+                )
+            except Exception:
+                report_id = self.models.execute_kw(
+                    self.db,
+                    self.uid,
+                    self.password,
+                    'ir.model.data',
+                    'xmlid_to_res_id',
+                    ['account.report_invoice'],
+                )
             pdf = self.models.execute_kw(
                 self.db,
                 self.uid,
