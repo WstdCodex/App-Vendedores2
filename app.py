@@ -54,24 +54,6 @@ def dashboard():
     
     return render_template('dashboard.html', user_name=session.get('user_name', 'Usuario'))
 
-@app.route('/mis-facturas')
-def mis_facturas():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    
-    try:
-        odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
-                              session['username'], session['password'])
-        odoo.uid = session['user_id']
-        
-        # Obtener facturas del vendedor
-        facturas = odoo.get_vendedor_facturas(session['user_id'])
-        
-        return render_template('mis_facturas.html', facturas=facturas)
-    except Exception as e:
-        flash(f'Error al cargar facturas: {str(e)}', 'error')
-        return redirect(url_for('dashboard'))
-
 @app.route('/clientes')
 def clientes():
     if 'user_id' not in session:
