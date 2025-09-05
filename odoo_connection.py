@@ -94,7 +94,7 @@ class OdooConnection:
                 {
                     'fields': [
                         'name', 'invoice_date', 'amount_total', 'amount_residual',
-                        'payment_state', 'partner_id', 'invoice_user_id'
+                        'payment_state', 'invoice_partner_display_name', 'invoice_user_id'
                     ]
                 }
             )
@@ -106,7 +106,7 @@ class OdooConnection:
                     'id': factura['id'],
                     'nombre': factura['name'],
                     'fecha': factura['invoice_date'].strftime('%d/%m/%Y') if factura['invoice_date'] else '',
-                    'cliente': factura['partner_id'][1] if factura['partner_id'] else 'Sin cliente',
+                    'cliente': factura.get('invoice_partner_display_name', 'Sin cliente'),
                     'total': factura['amount_total'],
                     'pendiente': factura['amount_residual'],
                     'estado': estado_pago,
@@ -143,7 +143,7 @@ class OdooConnection:
                 {
                     'fields': [
                         'name', 'invoice_date', 'amount_total', 'amount_residual',
-                        'payment_state', 'partner_id'
+                        'payment_state', 'invoice_partner_display_name'
                     ]
                 }
             )
@@ -157,7 +157,7 @@ class OdooConnection:
                     'id': factura['id'],
                     'nombre': factura['name'],
                     'fecha': factura['invoice_date'].strftime('%d/%m/%Y') if factura['invoice_date'] else '',
-                    'cliente': factura['partner_id'][1] if factura['partner_id'] else 'Sin cliente',
+                    'cliente': factura.get('invoice_partner_display_name', 'Sin cliente'),
                     'total': factura['amount_total'],
                     'pendiente': factura['amount_residual'],
                     'estado': estado_pago,
