@@ -185,10 +185,15 @@ class OdooConnection:
         """Buscar clientes en Odoo.
 
         Solo se devolverán los clientes asignados al usuario indicado.
+        Se excluyen los contactos secundarios para evitar duplicados,
+        considerando únicamente los clientes principales.
         Se limita el número de resultados para evitar demoras al
         consultar grandes cantidades de registros."""
         try:
-            domain = [('customer_rank', '>', 0)]
+            domain = [
+                ('customer_rank', '>', 0),
+                ('parent_id', '=', False),
+            ]
             if nombre_cliente:
                 domain.append(('name', 'ilike', nombre_cliente))
             if user_id is not None:
