@@ -193,6 +193,8 @@ class OdooConnection:
             domain = [
                 ('customer_rank', '>', 0),
 
+                ('parent_id', '=', False),
+
             ]
             if nombre_cliente:
                 domain.append(('name', 'ilike', nombre_cliente))
