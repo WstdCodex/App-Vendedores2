@@ -166,13 +166,14 @@ def api_buscar_clientes():
         return jsonify({'error': 'No autorizado'}), 401
 
     nombre_cliente = request.args.get('nombre', '')
+    limite = request.args.get('limite', 20)
 
     try:
         odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
                               session['username'], session['password'])
         odoo.uid = session['user_id']
 
-        clientes = odoo.buscar_clientes(nombre_cliente)
+        clientes = odoo.buscar_clientes(nombre_cliente, limit=int(limite))
         return jsonify(clientes)
     except Exception as e:
         return jsonify({'error': str(e)}), 500

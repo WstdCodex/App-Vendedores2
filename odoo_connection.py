@@ -181,31 +181,34 @@ class OdooConnection:
             print(f"Error buscando facturas: {e}")
             return []
 
-    def buscar_clientes(self, nombre_cliente=''):
-        """Buscar clientes en Odoo"""
+    def buscar_clientes(self, nombre_cliente: str = '', limit: int = 20):
+        """Buscar clientes en Odoo.
+
+        Se limita el número de resultados para evitar demoras al
+        consultar grandes cantidades de registros."""
         try:
             domain = [('customer_rank', '>', 0)]
             if nombre_cliente:
                 domain.append(('name', 'ilike', nombre_cliente))
 
-            clientes_ids = self.models.execute_kw(
-                self.db, self.uid, self.password,
-                'res.partner', 'search', [domain]
-            )
-            if not clientes_ids:
-                return []
-
+            # Utilizamos ``search_read`` con un límite para obtener los
+            # datos de los clientes en una sola llamada y reducir el
+            # tiempo de respuesta.
             clientes = self.models.execute_kw(
                 self.db,
                 self.uid,
                 self.password,
                 'res.partner',
-                'read',
-                [clientes_ids],
+                'search_read',
+                [domain],
                 {
-                    'fields': ['name', 'credit', 'debit']
+                    'fields': ['name', 'credit', 'debit'],
+                    'limit': limit,
                 },
             )
+
+            if not clientes:
+                return []
 
             clientes_formateados = []
             for c in clientes:

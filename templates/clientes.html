@@ -51,7 +51,9 @@ function buscarClientes() {
     const nombreCliente = document.getElementById('buscarCliente').value;
     mostrarLoading();
     const params = new URLSearchParams();
+    const limite = 20;
     if (nombreCliente) params.append('nombre', nombreCliente);
+    params.append('limite', limite);
     fetch(`/api/buscar-clientes?${params.toString()}`)
         .then(response => response.json())
         .then(data => {
