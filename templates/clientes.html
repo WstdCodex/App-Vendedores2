@@ -96,6 +96,8 @@ function actualizarListaClientes(clientes) {
         `;
         return;
     }
+    // Ordenar de mayor a menor deuda antes de renderizar
+    clientes.sort((a, b) => b.deuda_total - a.deuda_total);
 
     lista.innerHTML = clientes.map(c => `
         <a href="/clientes/${c.id}" class="text-decoration-none text-dark">
