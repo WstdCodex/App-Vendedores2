@@ -105,7 +105,10 @@ def cliente_detalle(cliente_id):
         cliente_info = odoo.get_cliente(cliente_id)
         facturas = odoo.get_facturas_cliente(cliente_id)
 
-        return render_template('cliente_detalle.html', cliente=cliente_info, facturas=facturas)
+        now = datetime.now()
+        total_mes = odoo.get_total_gasto_cliente_mes(cliente_id, now.year, now.month)
+
+        return render_template('cliente_detalle.html', cliente=cliente_info, facturas=facturas, total_mes=total_mes)
     except Exception as e:
         flash(f'Error al cargar cliente: {str(e)}', 'error')
         return redirect(url_for('clientes'))
