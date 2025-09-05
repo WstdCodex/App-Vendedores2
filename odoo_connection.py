@@ -1,6 +1,7 @@
 # odoo_connection.py
 import xmlrpc.client
 from datetime import datetime, date
+import base64
 
 class OdooConnection:
     def __init__(self, url, db, username, password):
@@ -13,7 +14,6 @@ class OdooConnection:
         # Conexiones XML-RPC
         self.common = xmlrpc.client.ServerProxy(f'{url}/xmlrpc/2/common')
         self.models = xmlrpc.client.ServerProxy(f'{url}/xmlrpc/2/object')
-        self.report = xmlrpc.client.ServerProxy(f'{url}/xmlrpc/2/report')
 
     def authenticate(self):
         """Autenticar usuario en Odoo"""
@@ -337,10 +337,13 @@ class OdooConnection:
     def get_factura_pdf(self, factura_id):
         """Obtener el PDF de una factura"""
         try:
-            pdf = self.report.render_qweb_pdf(
+            pdf = self.models.execute_kw(
                 self.db, self.uid, self.password,
-                'account.report_invoice', [factura_id]
+                'ir.actions.report', 'render_qweb_pdf',
+                ['account.report_invoice', [factura_id]]
             )
+            if isinstance(pdf, dict) and pdf.get('result'):
+                return base64.b64decode(pdf['result'])
             return pdf[0] if isinstance(pdf, (list, tuple)) else pdf
         except Exception as e:
             print(f"Error obteniendo PDF de factura: {e}")
