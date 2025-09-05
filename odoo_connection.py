@@ -224,14 +224,13 @@ class OdooConnection:
             print(f"Error obteniendo cliente: {e}")
             return {}
 
-    def get_facturas_cliente(self, user_id, partner_id, codigo_factura='', estado_filtro=''):
-        """Obtener facturas de un cliente con filtros"""
+    def get_facturas_cliente(self, partner_id, codigo_factura='', estado_filtro=''):
+        """Obtener facturas publicadas de un cliente con filtros"""
         try:
             domain = [
                 ('move_type', '=', 'out_invoice'),
-                ('invoice_user_id', '=', user_id),
                 ('partner_id', '=', partner_id),
-                ('state', '!=', 'draft')
+                ('state', '=', 'posted')
             ]
             if codigo_factura:
                 domain.append(('name', 'ilike', codigo_factura))
