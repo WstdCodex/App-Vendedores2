@@ -77,18 +77,35 @@ def mis_facturas():
 def clientes():
     if 'user_id' not in session:
         return redirect(url_for('login'))
-    
+
     try:
-        odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'], 
+        odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
                              session['username'], session['password'])
-        
-        # Obtener clientes y sus facturas
-        clientes_data = odoo.get_clientes_facturas(session['user_id'])
-        
+
+        # Obtener lista de clientes del vendedor
+        clientes_data = odoo.buscar_clientes(session['user_id'])
+
         return render_template('clientes.html', clientes=clientes_data)
     except Exception as e:
         flash(f'Error al cargar clientes: {str(e)}', 'error')
         return redirect(url_for('dashboard'))
+
+@app.route('/clientes/<int:cliente_id>')
+def cliente_detalle(cliente_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    try:
+        odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
+                             session['username'], session['password'])
+
+        cliente_info = odoo.get_cliente(cliente_id)
+        facturas = odoo.get_facturas_cliente(session['user_id'], cliente_id)
+
+        return render_template('cliente_detalle.html', cliente=cliente_info, facturas=facturas)
+    except Exception as e:
+        flash(f'Error al cargar cliente: {str(e)}', 'error')
+        return redirect(url_for('clientes'))
 
 @app.route('/api/buscar-facturas')
 def buscar_facturas():
@@ -108,21 +125,36 @@ def buscar_facturas():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/buscar-clientes')
-def buscar_clientes():
+def api_buscar_clientes():
     if 'user_id' not in session:
         return jsonify({'error': 'No autorizado'}), 401
-    
+
     nombre_cliente = request.args.get('nombre', '')
-    codigo_factura = request.args.get('factura', '')
-    estado_filtro = request.args.get('estado', '')
-    
+
     try:
-        odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'], 
+        odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
                              session['username'], session['password'])
-        
-        clientes = odoo.buscar_clientes(session['user_id'], nombre_cliente, 
-                                       codigo_factura, estado_filtro)
+
+        clientes = odoo.buscar_clientes(session['user_id'], nombre_cliente)
         return jsonify(clientes)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/cliente/<int:cliente_id>/facturas')
+def api_facturas_cliente(cliente_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+
+    codigo_factura = request.args.get('codigo', '')
+    estado_filtro = request.args.get('estado', '')
+
+    try:
+        odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
+                             session['username'], session['password'])
+
+        facturas = odoo.get_facturas_cliente(session['user_id'], cliente_id,
+                                            codigo_factura, estado_filtro)
+        return jsonify(facturas)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
