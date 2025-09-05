@@ -22,6 +22,9 @@
                 <a href="{{ url_for('descargar_factura_pdf', factura_id=factura.id) }}" class="btn btn-primary mt-3">
                     <i class="fas fa-download me-2"></i>Descargar PDF
                 </a>
+                <button type="button" class="btn btn-secondary mt-3" id="share-button">
+                    <i class="fas fa-share-alt me-2"></i>Compartir
+                </button>
             </div>
         </div>
 
@@ -53,4 +56,71 @@
         </div>
     </div>
 </div>
+<!-- Modal de opciones de compartir -->
+<div class="modal fade" id="shareModal" tabindex="-1" aria-labelledby="shareModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="shareModalLabel">Compartir factura</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-grid gap-2">
+                    <a id="whatsappShare" class="btn btn-success" target="_blank">
+                        <i class="fab fa-whatsapp me-2"></i>WhatsApp
+                    </a>
+                    <a id="gmailShare" class="btn btn-danger" target="_blank">
+                        <i class="fas fa-envelope me-2"></i>Gmail
+                    </a>
+                    <a id="instagramShare" class="btn btn-warning" target="_blank">
+                        <i class="fab fa-instagram me-2"></i>Instagram
+                    </a>
+                    <button type="button" class="btn btn-primary" id="printButton">
+                        <i class="fas fa-print me-2"></i>Imprimir
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% set pdf_url = url_for('descargar_factura_pdf', factura_id=factura.id, _external=True) %}
+<script>
+const pdfUrl = '{{ pdf_url }}';
+document.getElementById('share-button').addEventListener('click', async function() {
+    try {
+        const response = await fetch(pdfUrl);
+        const blob = await response.blob();
+        const file = new File([blob], 'factura_{{ factura.id }}.pdf', { type: 'application/pdf' });
+
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+                title: 'Factura {{ factura.nombre }}',
+                text: 'Factura {{ factura.nombre }} - Total ${{ "%.2f"|format(factura.total) }}',
+                files: [file]
+            });
+        } else {
+            throw new Error('Web Share API no soportado');
+        }
+    } catch (e) {
+        const modal = new bootstrap.Modal(document.getElementById('shareModal'));
+        modal.show();
+    }
+});
+
+document.getElementById('whatsappShare').href = `https://wa.me/?text=${encodeURIComponent(pdfUrl)}`;
+document.getElementById('gmailShare').href = `mailto:?subject=${encodeURIComponent('Factura ' + '{{ factura.nombre }}')}&body=${encodeURIComponent(pdfUrl)}`;
+document.getElementById('instagramShare').href = `https://www.instagram.com/?url=${encodeURIComponent(pdfUrl)}`;
+
+document.getElementById('printButton').addEventListener('click', function() {
+    const printWindow = window.open(pdfUrl, '_blank');
+    if (printWindow) {
+        printWindow.addEventListener('load', function() {
+            printWindow.print();
+        }, { once: true });
+    }
+});
+</script>
 {% endblock %}
