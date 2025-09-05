@@ -9,38 +9,20 @@
         <!-- Header -->
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h3 class="fw-bold text-white">
-                <i class="fas fa-users me-2"></i>Clientes y Facturas
+                <i class="fas fa-users me-2"></i>Clientes
             </h3>
             <a href="{{ url_for('dashboard') }}" class="btn btn-outline-light">
                 <i class="fas fa-arrow-left me-2"></i>Volver
             </a>
         </div>
-        
-        <!-- Búsqueda y Filtros -->
+
+        <!-- Búsqueda -->
         <div class="search-container">
             <div class="row g-3">
-                <div class="col-md-4">
+                <div class="col-md-11">
                     <label class="form-label fw-semibold">Buscar Cliente:</label>
-                    <input type="text" class="form-control" id="buscarCliente" 
-                           placeholder="Nombre del cliente...">
+                    <input type="text" class="form-control" id="buscarCliente" placeholder="Nombre del cliente...">
                 </div>
-                
-                <div class="col-md-4">
-                    <label class="form-label fw-semibold">Buscar Factura:</label>
-                    <input type="text" class="form-control" id="buscarFacturaCliente" 
-                           placeholder="Código de factura...">
-                </div>
-                
-                <div class="col-md-3">
-                    <label class="form-label fw-semibold">Estado:</label>
-                    <select class="form-select" id="filtroEstadoCliente">
-                        <option value="">Todos los estados</option>
-                        <option value="not_paid">No Pagadas</option>
-                        <option value="partial">Pagado Parcialmente</option>
-                        <option value="paid">Pagadas</option>
-                    </select>
-                </div>
-                
                 <div class="col-md-1 d-flex align-items-end">
                     <button class="btn btn-primary w-100" onclick="buscarClientes()">
                         <i class="fas fa-search"></i>
@@ -48,7 +30,7 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Loading -->
         <div class="loading">
             <div class="spinner-border" role="status">
@@ -56,83 +38,20 @@
             </div>
             <p class="mt-2">Buscando clientes...</p>
         </div>
-        
+
         <!-- Lista de Clientes -->
         <div id="listaClientes">
             {% if clientes %}
                 {% for cliente in clientes %}
-                <div class="card cliente-card">
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-4">
-                                <h5 class="fw-bold text-primary">
-                                    <i class="fas fa-user me-2"></i>{{ cliente.nombre }}
-                                </h5>
-                                <div class="mt-2">
-                                    {% if cliente.email %}
-                                    <p class="mb-1">
-                                        <i class="fas fa-envelope me-2 text-muted"></i>
-                                        {{ cliente.email }}
-                                    </p>
-                                    {% endif %}
-                                    
-                                    {% if cliente.telefono %}
-                                    <p class="mb-1">
-                                        <i class="fas fa-phone me-2 text-muted"></i>
-                                        {{ cliente.telefono }}
-                                    </p>
-                                    {% endif %}
-                                    
-                                    {% if cliente.direccion %}
-                                    <p class="mb-1">
-                                        <i class="fas fa-map-marker-alt me-2 text-muted"></i>
-                                        {{ cliente.direccion }}
-                                    </p>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            
-                            <div class="col-md-8">
-                                <h6 class="fw-semibold mb-3">Facturas:</h6>
-                                {% if cliente.facturas %}
-                                    <div class="row g-2">
-                                        {% for factura in cliente.facturas %}
-                                        <div class="col-12">
-                                            <div class="factura-item">
-                                                <div class="row align-items-center">
-                                                    <div class="col-md-3">
-                                                        <strong>{{ factura.nombre }}</strong>
-                                                    </div>
-                                                    <div class="col-md-2">
-                                                        <small class="text-muted">{{ factura.fecha }}</small>
-                                                    </div>
-                                                    <div class="col-md-2">
-                                                        <span class="fw-semibold text-success">
-                                                            ${{ "%.2f"|format(factura.total) }}
-                                                        </span>
-                                                    </div>
-                                                    <div class="col-md-2">
-                                                        <span class="fw-semibold text-warning">
-                                                            ${{ "%.2f"|format(factura.pendiente) }}
-                                                        </span>
-                                                    </div>
-                                                    <div class="col-md-3 text-end">
-                                                        <span class="badge bg-{{ factura.estado_color }}">
-                                                            {{ factura.estado_texto }}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        {% endfor %}
-                                    </div>
-                                {% else %}
-                                    <p class="text-muted">No hay facturas para este cliente</p>
-                                {% endif %}
-                            </div>
+                <a href="{{ url_for('cliente_detalle', cliente_id=cliente.id) }}" class="text-decoration-none text-dark">
+                    <div class="card cliente-card">
+                        <div class="card-body">
+                            <h5 class="fw-bold text-primary">
+                                <i class="fas fa-user me-2"></i>{{ cliente.nombre }}
+                            </h5>
                         </div>
                     </div>
-                </div>
+                </a>
                 {% endfor %}
             {% else %}
                 <div class="card">
@@ -151,16 +70,9 @@
 <script>
 function buscarClientes() {
     const nombreCliente = document.getElementById('buscarCliente').value;
-    const facturaCliente = document.getElementById('buscarFacturaCliente').value;
-    const estadoFiltro = document.getElementById('filtroEstadoCliente').value;
-    
     mostrarLoading();
-    
     const params = new URLSearchParams();
     if (nombreCliente) params.append('nombre', nombreCliente);
-    if (facturaCliente) params.append('factura', facturaCliente);
-    if (estadoFiltro) params.append('estado', estadoFiltro);
-    
     fetch(`/api/buscar-clientes?${params.toString()}`)
         .then(response => response.json())
         .then(data => {
@@ -175,10 +87,9 @@ function buscarClientes() {
 }
 
 function actualizarListaClientes(clientes) {
-    const listaClientes = document.getElementById('listaClientes');
-    
+    const lista = document.getElementById('listaClientes');
     if (clientes.length === 0) {
-        listaClientes.innerHTML = `
+        lista.innerHTML = `
             <div class="card">
                 <div class="card-body text-center py-5">
                     <i class="fas fa-search fa-4x text-muted mb-3"></i>
@@ -188,96 +99,25 @@ function actualizarListaClientes(clientes) {
         `;
         return;
     }
-    
-    listaClientes.innerHTML = clientes.map(cliente => `
-        <div class="card cliente-card">
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-4">
-                        <h5 class="fw-bold text-primary">
-                            <i class="fas fa-user me-2"></i>${cliente.nombre}
-                        </h5>
-                        <div class="mt-2">
-                            ${cliente.email ? `
-                            <p class="mb-1">
-                                <i class="fas fa-envelope me-2 text-muted"></i>
-                                ${cliente.email}
-                            </p>
-                            ` : ''}
-                            
-                            ${cliente.telefono ? `
-                            <p class="mb-1">
-                                <i class="fas fa-phone me-2 text-muted"></i>
-                                ${cliente.telefono}
-                            </p>
-                            ` : ''}
-                            
-                            ${cliente.direccion ? `
-                            <p class="mb-1">
-                                <i class="fas fa-map-marker-alt me-2 text-muted"></i>
-                                ${cliente.direccion}
-                            </p>
-                            ` : ''}
-                        </div>
-                    </div>
-                    
-                    <div class="col-md-8">
-                        <h6 class="fw-semibold mb-3">Facturas:</h6>
-                        ${cliente.facturas && cliente.facturas.length > 0 ? `
-                            <div class="row g-2">
-                                ${cliente.facturas.map(factura => `
-                                <div class="col-12">
-                                    <div class="factura-item">
-                                        <div class="row align-items-center">
-                                            <div class="col-md-3">
-                                                <strong>${factura.nombre}</strong>
-                                            </div>
-                                            <div class="col-md-2">
-                                                <small class="text-muted">${factura.fecha}</small>
-                                            </div>
-                                            <div class="col-md-2">
-                                                <span class="fw-semibold text-success">
-                                                    ${factura.total.toFixed(2)}
-                                                </span>
-                                            </div>
-                                            <div class="col-md-2">
-                                                <span class="fw-semibold text-warning">
-                                                    ${factura.pendiente.toFixed(2)}
-                                                </span>
-                                            </div>
-                                            <div class="col-md-3 text-end">
-                                                <span class="badge bg-${factura.estado_color}">
-                                                    ${factura.estado_texto}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                `).join('')}
-                            </div>
-                        ` : '<p class="text-muted">No hay facturas para este cliente</p>'}
-                    </div>
+
+    lista.innerHTML = clientes.map(c => `
+        <a href="/clientes/${c.id}" class="text-decoration-none text-dark">
+            <div class="card cliente-card">
+                <div class="card-body">
+                    <h5 class="fw-bold text-primary">
+                        <i class="fas fa-user me-2"></i>${c.nombre}
+                    </h5>
                 </div>
             </div>
-        </div>
+        </a>
     `).join('');
 }
 
-// Búsqueda en tiempo real
 document.getElementById('buscarCliente').addEventListener('input', function() {
     clearTimeout(this.timeoutId);
     this.timeoutId = setTimeout(() => {
         buscarClientes();
     }, 500);
 });
-
-document.getElementById('buscarFacturaCliente').addEventListener('input', function() {
-    clearTimeout(this.timeoutId);
-    this.timeoutId = setTimeout(() => {
-        buscarClientes();
-    }, 500);
-});
-
-document.getElementById('filtroEstadoCliente').addEventListener('change', buscarClientes);
 </script>
-{% endblock %>
+{% endblock %}
