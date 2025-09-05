@@ -1,6 +1,7 @@
 # odoo_connection.py
 import xmlrpc.client
 from datetime import datetime, date
+from calendar import monthrange
 import base64
 
 class OdooConnection:
@@ -83,6 +84,35 @@ class OdooConnection:
             except ValueError:
                 return value
         return ''
+
+    def get_total_gastos_mes(self, user_id, year, month):
+        """Obtener el total facturado por un vendedor en un mes específico."""
+        try:
+            start_date = datetime(year, month, 1).strftime('%Y-%m-%d')
+            end_day = monthrange(year, month)[1]
+            end_date = datetime(year, month, end_day).strftime('%Y-%m-%d')
+            domain = [
+                ('move_type', '=', 'out_invoice'),
+                ('invoice_user_id', '=', user_id),
+                ('state', '!=', 'draft'),
+                ('invoice_date', '>=', start_date),
+                ('invoice_date', '<=', end_date),
+            ]
+            facturas_ids = self.models.execute_kw(
+                self.db, self.uid, self.password,
+                'account.move', 'search', [domain]
+            )
+            if not facturas_ids:
+                return 0.0
+            facturas = self.models.execute_kw(
+                self.db, self.uid, self.password,
+                'account.move', 'read',
+                [facturas_ids], {'fields': ['amount_total']}
+            )
+            return sum(f.get('amount_total', 0.0) for f in facturas)
+        except Exception as e:
+            print(f"Error obteniendo total mensual: {e}")
+            return 0.0
 
     def get_vendedor_facturas(self, user_id):
         """Obtener facturas del vendedor"""

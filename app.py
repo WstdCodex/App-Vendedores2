@@ -1,6 +1,7 @@
 # app.py
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, Response
 from odoo_connection import OdooConnection
+from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = 'tu_clave_secreta_aqui'  # Cambiar por una clave segura
@@ -51,8 +52,37 @@ def logout():
 def dashboard():
     if 'user_id' not in session:
         return redirect(url_for('login'))
-    
+
     return render_template('dashboard.html', user_name=session.get('user_name', 'Usuario'))
+
+
+@app.route('/estadistico')
+def estadistico():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    mes = request.args.get('mes')
+    try:
+        if mes:
+            year, month = map(int, mes.split('-'))
+        else:
+            now = datetime.now()
+            year, month = now.year, now.month
+    except ValueError:
+        now = datetime.now()
+        year, month = now.year, now.month
+
+    try:
+        odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
+                              session['username'], session['password'])
+        odoo.uid = session['user_id']
+        total = odoo.get_total_gastos_mes(session['user_id'], year, month)
+    except Exception as e:
+        flash(f'Error al cargar estadísticas: {str(e)}', 'error')
+        total = None
+
+    selected_month = f"{year:04d}-{month:02d}"
+    return render_template('estadistico.html', total=total, mes=selected_month)
 
 @app.route('/clientes')
 def clientes():
