@@ -238,7 +238,7 @@ class OdooConnection:
 
                 credito = c.get('credit', 0.0)
                 debito = c.get('debit', 0.0)
-                saldo_favor = max(debito - credito, 0.0)
+                saldo_favor = max(credito - debito, 0.0)
                 clientes_formateados.append(
                     {
                         'id': c['id'],
@@ -295,7 +295,7 @@ class OdooConnection:
 
                 credito = c.get('credit', 0.0)
                 debito = c.get('debit', 0.0)
-                saldo_favor = max(debito - credito, 0.0)
+                saldo_favor = max(credito - debito, 0.0)
                 return {
                     'id': c.get('id'),
                     'nombre': c.get('name', ''),
