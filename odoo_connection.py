@@ -209,9 +209,32 @@ class OdooConnection:
 
             clientes_formateados = []
             for c in clientes:
+                # Calcular la deuda total sumando los montos pendientes de las
+                # facturas publicadas del cliente.
+                deuda_total = 0.0
+                try:
+                    facturas_pendientes = self.models.execute_kw(
+                        self.db,
+                        self.uid,
+                        self.password,
+                        'account.move',
+                        'search_read',
+                        [[
+                            ('move_type', '=', 'out_invoice'),
+                            ('partner_id', '=', c['id']),
+                            ('state', '=', 'posted'),
+                            ('amount_residual', '>', 0),
+                        ]],
+                        {'fields': ['amount_residual']},
+                    )
+                    deuda_total = sum(
+                        f.get('amount_residual', 0.0) for f in facturas_pendientes
+                    )
+                except Exception:
+                    deuda_total = 0.0
+
                 credito = c.get('credit', 0.0)
                 debito = c.get('debit', 0.0)
-                deuda_total = max(credito - debito, 0.0)
                 saldo_favor = max(debito - credito, 0.0)
                 clientes_formateados.append(
                     {
@@ -243,9 +266,32 @@ class OdooConnection:
             )
             if cliente:
                 c = cliente[0]
+                # Calcular la deuda total sumando los montos pendientes de las
+                # facturas publicadas del cliente.
+                deuda_total = 0.0
+                try:
+                    facturas_pendientes = self.models.execute_kw(
+                        self.db,
+                        self.uid,
+                        self.password,
+                        'account.move',
+                        'search_read',
+                        [[
+                            ('move_type', '=', 'out_invoice'),
+                            ('partner_id', '=', c['id']),
+                            ('state', '=', 'posted'),
+                            ('amount_residual', '>', 0),
+                        ]],
+                        {'fields': ['amount_residual']},
+                    )
+                    deuda_total = sum(
+                        f.get('amount_residual', 0.0) for f in facturas_pendientes
+                    )
+                except Exception:
+                    deuda_total = 0.0
+
                 credito = c.get('credit', 0.0)
                 debito = c.get('debit', 0.0)
-                deuda_total = max(credito - debito, 0.0)
                 saldo_favor = max(debito - credito, 0.0)
                 return {
                     'id': c.get('id'),
