@@ -155,7 +155,7 @@ def api_buscar_clientes():
                               session['username'], session['password'])
         odoo.uid = session['user_id']
 
-        clientes = odoo.buscar_clientes(nombre_cliente, limit=int(limite))
+        clientes = odoo.buscar_clientes(nombre_cliente, user_id=session['user_id'], limit=int(limite))
         return jsonify(clientes)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
