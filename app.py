@@ -163,6 +163,36 @@ def buscar_facturas():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/provincias')
+def api_provincias():
+    if 'user_id' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+
+    try:
+        odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
+                              session['username'], session['password'])
+        odoo.uid = session['user_id']
+        provincias = odoo.get_provincias()
+        return jsonify(provincias)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/ciudades')
+def api_ciudades():
+    if 'user_id' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+
+    provincia_id = request.args.get('provincia_id', type=int)
+
+    try:
+        odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
+                              session['username'], session['password'])
+        odoo.uid = session['user_id']
+        ciudades = odoo.get_ciudades(state_id=provincia_id, user_id=session['user_id'])
+        return jsonify(ciudades)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/buscar-clientes')
 def api_buscar_clientes():
     if 'user_id' not in session:
@@ -170,13 +200,21 @@ def api_buscar_clientes():
 
     nombre_cliente = request.args.get('nombre', '')
     limite = request.args.get('limite', 20)
+    provincia_id = request.args.get('provincia_id', type=int)
+    ciudad = request.args.get('ciudad', '')
 
     try:
         odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
                               session['username'], session['password'])
         odoo.uid = session['user_id']
 
-        clientes = odoo.buscar_clientes(nombre_cliente, user_id=session['user_id'], limit=int(limite))
+        clientes = odoo.buscar_clientes(
+            nombre_cliente,
+            user_id=session['user_id'],
+            limit=int(limite),
+            provincia_id=provincia_id,
+            ciudad=ciudad
+        )
         return jsonify(clientes)
     except Exception as e:
         return jsonify({'error': str(e)}), 500

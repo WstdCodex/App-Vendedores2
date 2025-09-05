@@ -19,11 +19,23 @@
         <!-- Búsqueda -->
         <div class="search-container">
             <div class="row g-3">
-                <div class="col-md-11">
+                <div class="col-md-4">
                     <label class="form-label fw-semibold">Buscar Cliente:</label>
                     <input type="text" class="form-control" id="buscarCliente" placeholder="Nombre del cliente...">
                 </div>
-                <div class="col-md-1 d-flex align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Provincia:</label>
+                    <select id="filtroProvincia" class="form-select">
+                        <option value="">Todas</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Ciudad:</label>
+                    <select id="filtroCiudad" class="form-select">
+                        <option value="">Todas</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
                     <button class="btn btn-primary w-100" onclick="buscarClientes()">
                         <i class="fas fa-search"></i>
                     </button>
@@ -49,10 +61,14 @@
 <script>
 function buscarClientes() {
     const nombreCliente = document.getElementById('buscarCliente').value;
+    const provinciaId = document.getElementById('filtroProvincia').value;
+    const ciudad = document.getElementById('filtroCiudad').value;
     mostrarLoading();
     const params = new URLSearchParams();
     const limite = 20;
     if (nombreCliente) params.append('nombre', nombreCliente);
+    if (provinciaId) params.append('provincia_id', provinciaId);
+    if (ciudad) params.append('ciudad', ciudad);
     params.append('limite', limite);
     fetch(`/api/buscar-clientes?${params.toString()}`)
         .then(response => response.json())
@@ -110,7 +126,42 @@ document.getElementById('buscarCliente').addEventListener('input', function() {
     }, 500);
 });
 
+function cargarProvincias() {
+    fetch('/api/provincias')
+        .then(r => r.json())
+        .then(data => {
+            const select = document.getElementById('filtroProvincia');
+            select.innerHTML = '<option value="">Todas</option>' +
+                data.map(p => `<option value="${p.id}">${p.nombre}</option>`).join('');
+        })
+        .catch(err => console.error('Error cargando provincias', err));
+}
+
+function cargarCiudades() {
+    const provinciaId = document.getElementById('filtroProvincia').value;
+    const url = provinciaId ? `/api/ciudades?provincia_id=${provinciaId}` : '/api/ciudades';
+    fetch(url)
+        .then(r => r.json())
+        .then(data => {
+            const select = document.getElementById('filtroCiudad');
+            select.innerHTML = '<option value="">Todas</option>' +
+                data.map(c => `<option value="${c.nombre}">${c.nombre}</option>`).join('');
+        })
+        .catch(err => console.error('Error cargando ciudades', err));
+}
+
+document.getElementById('filtroProvincia').addEventListener('change', () => {
+    cargarCiudades();
+    buscarClientes();
+});
+
+document.getElementById('filtroCiudad').addEventListener('change', buscarClientes);
+
 // Cargar la lista de clientes al iniciar la página
-document.addEventListener('DOMContentLoaded', buscarClientes);
+document.addEventListener('DOMContentLoaded', () => {
+    cargarProvincias();
+    cargarCiudades();
+    buscarClientes();
+});
 </script>
 {% endblock %}

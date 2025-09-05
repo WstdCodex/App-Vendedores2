@@ -181,11 +181,63 @@ class OdooConnection:
             print(f"Error buscando facturas: {e}")
             return []
 
-    def buscar_clientes(self, nombre_cliente: str = '', user_id: int = None, limit: int = 20):
+    def get_provincias(self):
+        """Obtener todas las provincias (states) disponibles en Odoo."""
+        try:
+            provincias = self.models.execute_kw(
+                self.db,
+                self.uid,
+                self.password,
+                'res.country.state',
+                'search_read',
+                [[],],
+                {
+                    'fields': ['name'],
+                    'order': 'name ASC'
+                },
+            )
+            return [{'id': p['id'], 'nombre': p['name']} for p in provincias]
+        except Exception as e:
+            print(f"Error obteniendo provincias: {e}")
+            return []
+
+    def get_ciudades(self, state_id=None, user_id=None):
+        """Obtener lista de ciudades disponibles, opcionalmente filtradas por provincia y vendedor."""
+        try:
+            domain = [('city', '!=', False)]
+            if state_id:
+                domain.append(('state_id', '=', state_id))
+            if user_id is not None:
+                domain.extend([
+                    ('user_id', '=', user_id),
+                    ('customer_rank', '>', 0),
+                    ('parent_id', '=', False)
+                ])
+
+            partners = self.models.execute_kw(
+                self.db,
+                self.uid,
+                self.password,
+                'res.partner',
+                'search_read',
+                [domain],
+                {'fields': ['city', 'state_id']},
+            )
+
+            ciudades = sorted({p['city'] for p in partners if p.get('city')})
+            return [{'nombre': c} for c in ciudades]
+        except Exception as e:
+            print(f"Error obteniendo ciudades: {e}")
+            return []
+
+    def buscar_clientes(self, nombre_cliente: str = '', user_id: int = None,
+                         limit: int = 20, provincia_id: int = None,
+                         ciudad: str = ''):
         """Buscar clientes en Odoo asignados a un vendedor específico.
-        
-        IMPORTANTE: El user_id debe ser proporcionado obligatoriamente para filtrar
-        solo los clientes asignados al comercial específico.
+
+        IMPORTANTE: El ``user_id`` debe ser proporcionado obligatoriamente para
+        filtrar solo los clientes asignados al comercial específico. Además
+        permite filtrar por provincia (``state_id``) y ciudad.
         """
         try:
             # Validación: user_id es obligatorio
@@ -198,9 +250,13 @@ class OdooConnection:
                 ('parent_id', '=', False),
                 ('user_id', '=', user_id)  # FILTRO CRÍTICO: Solo clientes de este vendedor
             ]
-            
+
             if nombre_cliente:
                 domain.append(('name', 'ilike', nombre_cliente))
+            if provincia_id:
+                domain.append(('state_id', '=', provincia_id))
+            if ciudad:
+                domain.append(('city', 'ilike', ciudad))
 
             print(f"Buscando clientes con dominio: {domain}")
 
