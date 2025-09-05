@@ -40,38 +40,7 @@
         </div>
 
         <!-- Lista de Clientes -->
-        <div id="listaClientes">
-            {% if clientes %}
-                {% for cliente in clientes %}
-                <a href="{{ url_for('cliente_detalle', cliente_id=cliente.id) }}" class="text-decoration-none text-dark">
-                    <div class="card cliente-card">
-                        <div class="card-body">
-                            <h5 class="fw-bold text-primary">
-                                <i class="fas fa-user me-2"></i>{{ cliente.nombre }}
-                            </h5>
-                            <p class="mb-1">
-                                <i class="fas fa-money-bill-wave me-2 text-danger"></i>
-                                Deuda total: ${{ '%.2f'|format(cliente.deuda_total) }}
-                            </p>
-                            {% if cliente.saldo_favor > 0 %}
-                            <p class="mb-0">
-                                <i class="fas fa-coins me-2 text-success"></i>
-                                Saldo a favor: ${{ '%.2f'|format(cliente.saldo_favor) }}
-                            </p>
-                            {% endif %}
-                        </div>
-                    </div>
-                </a>
-                {% endfor %}
-            {% else %}
-                <div class="card">
-                    <div class="card-body text-center py-5">
-                        <i class="fas fa-users fa-4x text-muted mb-3"></i>
-                        <h5 class="text-muted">No se encontraron clientes</h5>
-                    </div>
-                </div>
-            {% endif %}
-        </div>
+        <div id="listaClientes"></div>
     </div>
 </div>
 {% endblock %}
@@ -138,5 +107,8 @@ document.getElementById('buscarCliente').addEventListener('input', function() {
         buscarClientes();
     }, 500);
 });
+
+// Cargar la lista de clientes al iniciar la página
+document.addEventListener('DOMContentLoaded', buscarClientes);
 </script>
 {% endblock %}
