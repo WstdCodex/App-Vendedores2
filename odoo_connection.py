@@ -182,24 +182,27 @@ class OdooConnection:
             return []
 
     def buscar_clientes(self, nombre_cliente: str = '', user_id: int = None, limit: int = 20):
-        """Buscar clientes en Odoo asignados a un vendedor.
-
-
-        Solo se devolverán los clientes cuyo vendedor responsable
-        coincida con el identificador proporcionado. Se limita el número
-        de resultados para evitar demoras al consultar grandes cantidades
-        de registros."""
+        """Buscar clientes en Odoo asignados a un vendedor específico.
+        
+        IMPORTANTE: El user_id debe ser proporcionado obligatoriamente para filtrar
+        solo los clientes asignados al comercial específico.
+        """
         try:
+            # Validación: user_id es obligatorio
+            if user_id is None:
+                print("Error: user_id es obligatorio para buscar clientes")
+                return []
+
             domain = [
                 ('customer_rank', '>', 0),
-
                 ('parent_id', '=', False),
-
+                ('user_id', '=', user_id)  # FILTRO CRÍTICO: Solo clientes de este vendedor
             ]
+            
             if nombre_cliente:
                 domain.append(('name', 'ilike', nombre_cliente))
-            if user_id is not None:
-                domain.append(('user_id', '=', user_id))
+
+            print(f"Buscando clientes con dominio: {domain}")
 
             # Utilizamos ``search_read`` con un límite para obtener los
             # datos de los clientes en una sola llamada y reducir el
@@ -212,16 +215,28 @@ class OdooConnection:
                 'search_read',
                 [domain],
                 {
-                    'fields': ['name', 'credit', 'debit'],
+                    'fields': ['name', 'credit', 'debit', 'user_id'],
                     'limit': limit,
                 },
             )
+
+            print(f"Clientes encontrados: {len(clientes) if clientes else 0}")
 
             if not clientes:
                 return []
 
             clientes_formateados = []
             for c in clientes:
+                # Verificación adicional del vendedor asignado
+                cliente_user_id = c.get('user_id')
+                if cliente_user_id:
+                    cliente_user_id = cliente_user_id[0] if isinstance(cliente_user_id, list) else cliente_user_id
+                
+                # Si el cliente no tiene el vendedor correcto, lo saltamos
+                if cliente_user_id != user_id:
+                    print(f"Cliente {c.get('name')} tiene vendedor {cliente_user_id}, esperado {user_id}")
+                    continue
+
                 # Calcular la deuda total sumando los montos pendientes de las
                 # facturas publicadas del cliente.
                 deuda_total = 0.0
@@ -255,12 +270,113 @@ class OdooConnection:
                         'nombre': c.get('name', ''),
                         'deuda_total': deuda_total,
                         'saldo_favor': saldo_favor,
+                        'vendedor_id': cliente_user_id  # Para debug
                     }
                 )
 
+            print(f"Clientes formateados: {len(clientes_formateados)}")
             return clientes_formateados
+            
         except Exception as e:
             print(f"Error buscando clientes: {e}")
+            return []
+
+    def get_clientes_vendedor(self, user_id: int, nombre_cliente: str = '', limit: int = 20):
+        """Método específico para obtener SOLO los clientes asignados a un vendedor específico.
+        
+        Este método garantiza que solo se devuelvan clientes que tengan el vendedor
+        especificado en el campo 'user_id' del modelo res.partner.
+        """
+        try:
+            if user_id is None:
+                print("Error: user_id es obligatorio")
+                return []
+
+            # Dominio estricto: solo clientes con este vendedor específico
+            domain = [
+                ('customer_rank', '>', 0),          # Es un cliente
+                ('parent_id', '=', False),          # No es un contacto hijo
+                ('user_id', '=', user_id),          # Asignado a este vendedor específicamente
+                ('active', '=', True)               # Cliente activo
+            ]
+            
+            if nombre_cliente.strip():
+                domain.append(('name', 'ilike', f'%{nombre_cliente.strip()}%'))
+
+            print(f"Dominio de búsqueda: {domain}")
+
+            # Buscar clientes con el dominio específico
+            clientes = self.models.execute_kw(
+                self.db,
+                self.uid,
+                self.password,
+                'res.partner',
+                'search_read',
+                [domain],
+                {
+                    'fields': ['name', 'credit', 'debit', 'user_id', 'email', 'phone'],
+                    'limit': limit,
+                    'order': 'name ASC'
+                },
+            )
+
+            print(f"Número de clientes encontrados: {len(clientes) if clientes else 0}")
+
+            if not clientes:
+                return []
+
+            clientes_formateados = []
+            for c in clientes:
+                # Doble verificación del vendedor
+                cliente_vendedor = c.get('user_id')
+                if cliente_vendedor:
+                    vendedor_id = cliente_vendedor[0] if isinstance(cliente_vendedor, list) else cliente_vendedor
+                    if vendedor_id != user_id:
+                        print(f"ADVERTENCIA: Cliente {c.get('name')} tiene vendedor {vendedor_id}, esperado {user_id}")
+                        continue
+
+                # Calcular deuda total
+                deuda_total = 0.0
+                try:
+                    facturas_pendientes = self.models.execute_kw(
+                        self.db,
+                        self.uid,
+                        self.password,
+                        'account.move',
+                        'search_read',
+                        [[
+                            ('move_type', '=', 'out_invoice'),
+                            ('partner_id', '=', c['id']),
+                            ('state', '=', 'posted'),
+                            ('amount_residual', '>', 0),
+                        ]],
+                        {'fields': ['amount_residual']},
+                    )
+                    deuda_total = sum(
+                        f.get('amount_residual', 0.0) for f in facturas_pendientes
+                    )
+                except Exception as e:
+                    print(f"Error calculando deuda para cliente {c['id']}: {e}")
+                    deuda_total = 0.0
+
+                credito = c.get('credit', 0.0)
+                debito = c.get('debit', 0.0)
+                saldo_favor = max(credito - debito, 0.0)
+                
+                clientes_formateados.append({
+                    'id': c['id'],
+                    'nombre': c.get('name', ''),
+                    'email': c.get('email', ''),
+                    'telefono': c.get('phone', ''),
+                    'deuda_total': deuda_total,
+                    'saldo_favor': saldo_favor,
+                })
+
+            print(f"Clientes procesados correctamente: {len(clientes_formateados)}")
+            return clientes_formateados
+
+        except Exception as e:
+            print(f"Error obteniendo clientes del vendedor: {e}")
             return []
 
     def get_cliente(self, partner_id):
@@ -274,7 +390,7 @@ class OdooConnection:
                 'read',
                 [partner_id],
                 {
-                    'fields': ['name', 'email', 'phone', 'street', 'credit', 'debit']
+                    'fields': ['name', 'email', 'phone', 'street', 'credit', 'debit', 'user_id']
                 },
             )
             if cliente:
@@ -306,6 +422,22 @@ class OdooConnection:
                 credito = c.get('credit', 0.0)
                 debito = c.get('debit', 0.0)
                 saldo_favor = max(credito - debito, 0.0)
+                
+                # Obtener información del vendedor asignado
+                vendedor_info = ""
+                if c.get('user_id'):
+                    vendedor_id = c['user_id'][0] if isinstance(c['user_id'], list) else c['user_id']
+                    try:
+                        vendedor = self.models.execute_kw(
+                            self.db, self.uid, self.password,
+                            'res.users', 'read',
+                            [vendedor_id], {'fields': ['name']}
+                        )
+                        if vendedor:
+                            vendedor_info = vendedor[0]['name']
+                    except Exception:
+                        pass
+                
                 return {
                     'id': c.get('id'),
                     'nombre': c.get('name', ''),
@@ -314,6 +446,8 @@ class OdooConnection:
                     'direccion': c.get('street', ''),
                     'deuda_total': deuda_total,
                     'saldo_favor': saldo_favor,
+                    'vendedor': vendedor_info,
+                    'vendedor_id': c.get('user_id')[0] if c.get('user_id') else None
                 }
             return {}
         except Exception as e:
@@ -518,4 +652,3 @@ class OdooConnection:
                 except Exception as e3:
                     print(f"Error obteniendo PDF de factura (todos los métodos fallaron): {e3}")
                     return None
-
