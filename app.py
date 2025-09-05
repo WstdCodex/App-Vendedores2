@@ -76,19 +76,9 @@ def mis_facturas():
 def clientes():
     if 'user_id' not in session:
         return redirect(url_for('login'))
-
-    try:
-        odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
-                              session['username'], session['password'])
-        odoo.uid = session['user_id']
-
-        # Obtener lista de clientes desde Odoo
-        clientes_data = odoo.buscar_clientes()
-
-        return render_template('clientes.html', clientes=clientes_data)
-    except Exception as e:
-        flash(f'Error al cargar clientes: {str(e)}', 'error')
-        return redirect(url_for('dashboard'))
+    # La lista de clientes se cargará mediante una solicitud asíncrona
+    # para evitar demoras al cargar la página inicial.
+    return render_template('clientes.html', clientes=[])
 
 @app.route('/clientes/<int:cliente_id>')
 def cliente_detalle(cliente_id):
