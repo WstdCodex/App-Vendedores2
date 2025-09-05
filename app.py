@@ -84,8 +84,8 @@ def clientes():
                               session['username'], session['password'])
         odoo.uid = session['user_id']
 
-        # Obtener lista de clientes del vendedor
-        clientes_data = odoo.buscar_clientes(session['user_id'])
+        # Obtener lista de clientes desde Odoo
+        clientes_data = odoo.buscar_clientes()
 
         return render_template('clientes.html', clientes=clientes_data)
     except Exception as e:
@@ -140,7 +140,7 @@ def api_buscar_clientes():
                               session['username'], session['password'])
         odoo.uid = session['user_id']
 
-        clientes = odoo.buscar_clientes(session['user_id'], nombre_cliente)
+        clientes = odoo.buscar_clientes(nombre_cliente)
         return jsonify(clientes)
     except Exception as e:
         return jsonify({'error': str(e)}), 500

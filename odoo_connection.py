@@ -169,13 +169,10 @@ class OdooConnection:
             print(f"Error buscando facturas: {e}")
             return []
 
-    def buscar_clientes(self, user_id, nombre_cliente=''):
-        """Buscar clientes asignados al vendedor"""
+    def buscar_clientes(self, nombre_cliente=''):
+        """Buscar clientes en Odoo"""
         try:
-            domain = [
-                ('user_id', '=', user_id),
-                ('customer_rank', '>', 0)
-            ]
+            domain = [('customer_rank', '>', 0)]
             if nombre_cliente:
                 domain.append(('name', 'ilike', nombre_cliente))
 
