@@ -86,6 +86,7 @@
 {% endblock %}
 
 {% block extra_js %}
+
 {% set pdf_url = url_for('descargar_factura_pdf', factura_id=factura.id, _external=True) %}
 <script>
 const pdfUrl = '{{ pdf_url }}';
@@ -105,10 +106,12 @@ document.getElementById('share-button').addEventListener('click', async function
             throw new Error('Web Share API no soportado');
         }
     } catch (e) {
+
         const modal = new bootstrap.Modal(document.getElementById('shareModal'));
         modal.show();
     }
 });
+
 
 document.getElementById('whatsappShare').href = `https://wa.me/?text=${encodeURIComponent(pdfUrl)}`;
 document.getElementById('gmailShare').href = `mailto:?subject=${encodeURIComponent('Factura ' + '{{ factura.nombre }}')}&body=${encodeURIComponent(pdfUrl)}`;
@@ -121,6 +124,7 @@ document.getElementById('printButton').addEventListener('click', function() {
             printWindow.print();
         }, { once: true });
     }
+
 });
 </script>
 {% endblock %}
