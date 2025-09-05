@@ -1,8 +1,6 @@
 # app.py
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, Response
 from odoo_connection import OdooConnection
-from datetime import datetime
-import os
 
 app = Flask(__name__)
 app.secret_key = 'tu_clave_secreta_aqui'  # Cambiar por una clave segura
@@ -109,6 +107,50 @@ def cliente_detalle(cliente_id):
     except Exception as e:
         flash(f'Error al cargar cliente: {str(e)}', 'error')
         return redirect(url_for('clientes'))
+
+@app.route('/clientes/<int:cliente_id>/factura/<int:factura_id>')
+def factura_detalle(cliente_id, factura_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    try:
+        odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
+                              session['username'], session['password'])
+        odoo.uid = session['user_id']
+
+        factura = odoo.get_factura(factura_id)
+        if not factura:
+            flash('Factura no encontrada', 'error')
+            return redirect(url_for('cliente_detalle', cliente_id=cliente_id))
+
+        return render_template('factura_detalle.html', factura=factura, cliente_id=cliente_id)
+    except Exception as e:
+        flash(f'Error al cargar factura: {str(e)}', 'error')
+        return redirect(url_for('cliente_detalle', cliente_id=cliente_id))
+
+@app.route('/facturas/<int:factura_id>/pdf')
+def descargar_factura_pdf(factura_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    try:
+        odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
+                              session['username'], session['password'])
+        odoo.uid = session['user_id']
+
+        pdf_content = odoo.get_factura_pdf(factura_id)
+        if not pdf_content:
+            flash('No se pudo generar el PDF de la factura', 'error')
+            return redirect(request.referrer or url_for('dashboard'))
+
+        response = Response(pdf_content, mimetype='application/pdf')
+        response.headers['Content-Disposition'] = (
+            f'attachment; filename=factura_{factura_id}.pdf'
+        )
+        return response
+    except Exception as e:
+        flash(f'Error al descargar factura: {str(e)}', 'error')
+        return redirect(request.referrer or url_for('dashboard'))
 
 @app.route('/api/buscar-facturas')
 def buscar_facturas():

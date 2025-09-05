@@ -92,7 +92,11 @@
                             {% if facturas %}
                                 {% for factura in facturas %}
                                 <tr>
-                                    <td class="fw-bold">{{ factura.nombre }}</td>
+                                    <td class="fw-bold">
+                                        <a href="{{ url_for('factura_detalle', cliente_id=cliente.id, factura_id=factura.id) }}" class="text-decoration-none">
+                                            {{ factura.nombre }}
+                                        </a>
+                                    </td>
                                     <td>{{ factura.fecha }}</td>
                                     <td class="fw-semibold text-success">${{ "%.2f"|format(factura.total) }}</td>
                                     <td class="fw-semibold text-warning">${{ "%.2f"|format(factura.pendiente) }}</td>
@@ -155,7 +159,7 @@ function actualizarTablaFacturas(facturas) {
 
     tbody.innerHTML = facturas.map(factura => `
         <tr>
-            <td class="fw-bold">${factura.nombre}</td>
+            <td class="fw-bold"><a href="/clientes/${CLIENTE_ID}/factura/${factura.id}" class="text-decoration-none">${factura.nombre}</a></td>
             <td>${factura.fecha}</td>
             <td class="fw-semibold text-success">${factura.total.toFixed(2)}</td>
             <td class="fw-semibold text-warning">${factura.pendiente.toFixed(2)}</td>
