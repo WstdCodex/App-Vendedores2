@@ -62,8 +62,9 @@ def mis_facturas():
         return redirect(url_for('login'))
     
     try:
-        odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'], 
-                             session['username'], session['password'])
+        odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
+                              session['username'], session['password'])
+        odoo.uid = session['user_id']
         
         # Obtener facturas del vendedor
         facturas = odoo.get_vendedor_facturas(session['user_id'])
@@ -80,7 +81,8 @@ def clientes():
 
     try:
         odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
-                             session['username'], session['password'])
+                              session['username'], session['password'])
+        odoo.uid = session['user_id']
 
         # Obtener lista de clientes del vendedor
         clientes_data = odoo.buscar_clientes(session['user_id'])
@@ -97,7 +99,8 @@ def cliente_detalle(cliente_id):
 
     try:
         odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
-                             session['username'], session['password'])
+                              session['username'], session['password'])
+        odoo.uid = session['user_id']
 
         cliente_info = odoo.get_cliente(cliente_id)
         facturas = odoo.get_facturas_cliente(session['user_id'], cliente_id)
@@ -116,8 +119,9 @@ def buscar_facturas():
     estado_filtro = request.args.get('estado', '')
     
     try:
-        odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'], 
-                             session['username'], session['password'])
+        odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
+                              session['username'], session['password'])
+        odoo.uid = session['user_id']
         
         facturas = odoo.buscar_facturas(session['user_id'], codigo_factura, estado_filtro)
         return jsonify(facturas)
@@ -133,7 +137,8 @@ def api_buscar_clientes():
 
     try:
         odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
-                             session['username'], session['password'])
+                              session['username'], session['password'])
+        odoo.uid = session['user_id']
 
         clientes = odoo.buscar_clientes(session['user_id'], nombre_cliente)
         return jsonify(clientes)
@@ -150,7 +155,8 @@ def api_facturas_cliente(cliente_id):
 
     try:
         odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
-                             session['username'], session['password'])
+                              session['username'], session['password'])
+        odoo.uid = session['user_id']
 
         facturas = odoo.get_facturas_cliente(session['user_id'], cliente_id,
                                             codigo_factura, estado_filtro)
