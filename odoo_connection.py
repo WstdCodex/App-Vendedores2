@@ -13,6 +13,7 @@ class OdooConnection:
         # Conexiones XML-RPC
         self.common = xmlrpc.client.ServerProxy(f'{url}/xmlrpc/2/common')
         self.models = xmlrpc.client.ServerProxy(f'{url}/xmlrpc/2/object')
+        self.report = xmlrpc.client.ServerProxy(f'{url}/xmlrpc/2/report')
 
     def authenticate(self):
         """Autenticar usuario en Odoo"""
@@ -284,4 +285,64 @@ class OdooConnection:
         except Exception as e:
             print(f"Error obteniendo facturas del cliente: {e}")
             return []
+
+    def get_factura(self, factura_id):
+        """Obtener los detalles de una factura específica"""
+        try:
+            factura = self.models.execute_kw(
+                self.db, self.uid, self.password,
+                'account.move', 'read',
+                [factura_id],
+                {
+                    'fields': [
+                        'name', 'invoice_date', 'amount_total',
+                        'invoice_partner_display_name', 'invoice_line_ids'
+                    ]
+                }
+            )
+            if not factura:
+                return None
+
+            f = factura[0]
+            lineas = []
+            if f.get('invoice_line_ids'):
+                lineas_data = self.models.execute_kw(
+                    self.db, self.uid, self.password,
+                    'account.move.line', 'read',
+                    [f['invoice_line_ids']],
+                    {'fields': ['name', 'quantity', 'price_unit', 'price_total']}
+                )
+                lineas = [
+                    {
+                        'descripcion': l.get('name', ''),
+                        'cantidad': l.get('quantity', 0),
+                        'precio_unitario': l.get('price_unit', 0.0),
+                        'subtotal': l.get('price_total', 0.0)
+                    }
+                    for l in lineas_data
+                ]
+
+            return {
+                'id': f.get('id'),
+                'nombre': f.get('name'),
+                'fecha': self._format_date(f.get('invoice_date')),
+                'cliente': f.get('invoice_partner_display_name', ''),
+                'total': f.get('amount_total', 0.0),
+                'lineas': lineas
+            }
+        except Exception as e:
+            print(f"Error obteniendo factura: {e}")
+            return None
+
+    def get_factura_pdf(self, factura_id):
+        """Obtener el PDF de una factura"""
+        try:
+            pdf = self.report.render_qweb_pdf(
+                self.db, self.uid, self.password,
+                'account.report_invoice', [factura_id]
+            )
+            return pdf[0] if isinstance(pdf, (list, tuple)) else pdf
+        except Exception as e:
+            print(f"Error obteniendo PDF de factura: {e}")
+            return None
 

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Factura {{ factura.nombre }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="fw-bold text-white">
+                <i class="fas fa-file-invoice-dollar me-2"></i>Factura {{ factura.nombre }}
+            </h3>
+            <a href="{{ url_for('cliente_detalle', cliente_id=cliente_id) }}" class="btn btn-outline-light">
+                <i class="fas fa-arrow-left me-2"></i>Volver
+            </a>
+        </div>
+
+        <div class="card factura-card mb-4">
+            <div class="card-body">
+                <p class="mb-1"><strong>Cliente:</strong> {{ factura.cliente }}</p>
+                <p class="mb-1"><strong>Fecha:</strong> {{ factura.fecha }}</p>
+                <p class="mb-1"><strong>Total:</strong> ${{ "%.2f"|format(factura.total) }}</p>
+                <a href="{{ url_for('descargar_factura_pdf', factura_id=factura.id) }}" class="btn btn-primary mt-3">
+                    <i class="fas fa-download me-2"></i>Descargar PDF
+                </a>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Descripción</th>
+                                <th>Cantidad</th>
+                                <th>Precio Unitario</th>
+                                <th>Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for linea in factura.lineas %}
+                            <tr>
+                                <td>{{ linea.descripcion }}</td>
+                                <td>{{ linea.cantidad }}</td>
+                                <td>${{ "%.2f"|format(linea.precio_unitario) }}</td>
+                                <td>${{ "%.2f"|format(linea.subtotal) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
