@@ -2,6 +2,9 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, Response
 from odoo_connection import OdooConnection
 from datetime import datetime
+from io import BytesIO
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
 
 app = Flask(__name__)
 app.secret_key = 'tu_clave_secreta_aqui'  # Cambiar por una clave segura
@@ -151,32 +154,50 @@ def descargar_factura_pdf(factura_id):
             )
             return response
 
-        # Si no se pudo generar el PDF, devolvemos la factura en texto plano.
+        # Si no se pudo obtener el PDF desde Odoo, generamos uno simple.
         factura = odoo.get_factura(factura_id)
         if not factura:
             flash('No se pudo obtener la información de la factura', 'error')
             return redirect(request.referrer or url_for('dashboard'))
 
-        lines = [
-            f"Descripción: {l['descripcion']} - Cantidad: {l['cantidad']} - Precio: {l['precio_unitario']} - Subtotal: {l['subtotal']}"
-            for l in factura.get('lineas', [])
-        ]
-        text_content = (
-            f"Factura: {factura['nombre']}\n"
-            f"Fecha: {factura['fecha']}\n"
-            f"Cliente: {factura['cliente']}\n"
-            f"Total: {factura['total']}\n\n"
-            + "\n".join(lines)
-        )
+        buffer = BytesIO()
+        p = canvas.Canvas(buffer, pagesize=letter)
+        y = 750
+        p.setFont('Helvetica-Bold', 14)
+        p.drawString(50, y, f"Factura: {factura['nombre']}")
+        y -= 20
+        p.setFont('Helvetica', 12)
+        p.drawString(50, y, f"Fecha: {factura['fecha']}")
+        y -= 20
+        p.drawString(50, y, f"Cliente: {factura['cliente']}")
+        y -= 30
+        p.drawString(50, y, 'Detalle:')
+        y -= 20
+        for line in factura.get('lineas', []):
+            line_text = (
+                f"{line['descripcion']} - Cantidad: {line['cantidad']} - "
+                f"Precio: {line['precio_unitario']} - Subtotal: {line['subtotal']}"
+            )
+            p.drawString(50, y, line_text)
+            y -= 15
+            if y < 50:
+                p.showPage()
+                y = 750
+        y -= 10
+        p.drawString(50, y, f"Total: {factura['total']}")
+        p.showPage()
+        p.save()
+        buffer.seek(0)
 
-        response = Response(text_content, mimetype='text/plain')
+        response = Response(buffer.getvalue(), mimetype='application/pdf')
         response.headers['Content-Disposition'] = (
-            f'attachment; filename=factura_{factura_id}.txt'
+            f'attachment; filename=factura_{factura_id}.pdf'
         )
         return response
     except Exception as e:
         flash(f'Error al descargar factura: {str(e)}', 'error')
         return redirect(request.referrer or url_for('dashboard'))
+
 
 @app.route('/api/buscar-facturas')
 def buscar_facturas():
