@@ -800,9 +800,9 @@ class OdooConnection:
 
                     # Diferentes formatos de URL que pueden funcionar
                     possible_urls = [
-                        f"{base_url}/report/pdf/{report_name}/{factura_id}",
-                        f"{base_url}/web/content?model=ir.actions.report&id={report_id}&filename={factura_id}.pdf&field=&download=true&data={factura_id}",
-                        f"{base_url}/report/download/pdf/{report_id}/{factura_id}"
+                        f"{base_url}/report/pdf/{report_name}/{factura_id}?db={self.db}",
+                        f"{base_url}/web/content?model=ir.actions.report&id={report_id}&filename={factura_id}.pdf&field=&download=true&data={factura_id}&db={self.db}",
+                        f"{base_url}/report/download/pdf/{report_id}/{factura_id}?db={self.db}"
                     ]
 
                     return {
@@ -829,14 +829,14 @@ class OdooConnection:
             urls_by_report = {}
             for report_name in common_reports:
                 urls_by_report[report_name] = [
-                    f"{base_url}/report/pdf/{report_name}/{factura_id}",
-                    f"{base_url}/report/html/{report_name}/{factura_id}"
+                    f"{base_url}/report/pdf/{report_name}/{factura_id}?db={self.db}",
+                    f"{base_url}/report/html/{report_name}/{factura_id}?db={self.db}"
                 ]
 
             return {
                 'method': 'conventional_urls',
                 'urls_by_report': urls_by_report,
-                'recommended_url': f"{base_url}/report/pdf/account.report_invoice_with_payments/{factura_id}"
+                'recommended_url': f"{base_url}/report/pdf/account.report_invoice_with_payments/{factura_id}?db={self.db}"
             }
 
         except Exception as e:
@@ -846,7 +846,7 @@ class OdooConnection:
     def get_simple_pdf_url(self, factura_id):
         """Método simple que devuelve la URL más probable del PDF"""
         base_url = self.url.rstrip('/')
-        return f"{base_url}/report/pdf/account.report_invoice_with_payments/{factura_id}"
+        return f"{base_url}/report/pdf/account.report_invoice_with_payments/{factura_id}?db={self.db}"
 
     def download_pdf_with_session(self, factura_id, username=None, password=None):
         """Descargar PDF usando sesión HTTP directa"""
