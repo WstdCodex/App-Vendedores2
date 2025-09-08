@@ -114,6 +114,15 @@ class OdooConnection:
                 return value
         return ''
 
+    def _clean_description(self, text):
+        """Remove text starting from 'Marcas' onwards."""
+        if not isinstance(text, str):
+            return text
+        idx = text.find('Marcas')
+        if idx != -1:
+            return text[:idx].strip()
+        return text
+
     def get_total_gastos_mes(self, user_id, year, month):
         """Obtener el total facturado en un mes específico.
 
@@ -708,7 +717,7 @@ class OdooConnection:
                 )
                 lineas = [
                     {
-                        'descripcion': l.get('name', ''),
+                        'descripcion': self._clean_description(l.get('name', '')),
                         'cantidad': l.get('quantity', 0),
                         'precio_unitario': l.get('price_unit', 0.0),
                         'iva': l.get('price_total', 0.0) - l.get('price_subtotal', 0.0),
