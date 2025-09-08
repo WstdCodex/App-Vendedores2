@@ -858,26 +858,16 @@ class OdooConnection:
                 rpc_pass = password or self.password
                 rpc_uid = self.common.authenticate(self.db, rpc_user, rpc_pass, {})
                 if rpc_uid:
-                    report_ids = self.models.execute_kw(
+                    pdf_binary = self.models.execute_kw(
                         self.db,
                         rpc_uid,
                         rpc_pass,
                         'ir.actions.report',
-                        'search',
-                        [[('report_name', '=', 'account.report_invoice_with_payments')]],
-                        {'limit': 1}
+                        'get_pdf',
+                        [[factura_id], 'account.report_invoice_with_payments']
                     )
-                    if report_ids:
-                        pdf_binary = self.models.execute_kw(
-                            self.db,
-                            rpc_uid,
-                            rpc_pass,
-                            'ir.actions.report',
-                            'render_qweb_pdf',
-                            [report_ids[0], [factura_id]]
-                        )
-                        if pdf_binary and pdf_binary[0]:
-                            return base64.b64decode(pdf_binary[0])
+                    if pdf_binary:
+                        return base64.b64decode(pdf_binary)
             except Exception as e:
                 print(f"Error descargando PDF vía RPC: {e}")
 
