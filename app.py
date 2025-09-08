@@ -79,7 +79,13 @@ def estadistico():
         odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
                               session['username'], session['password'])
         odoo.uid = session['user_id']
-        total = odoo.get_total_gastos_mes(session['user_id'], year, month)
+        mostrar_todo = (
+            odoo.has_group('sales_team.group_sale_manager') or
+            odoo.has_group('sales_team.group_sale_salesman_all_leads')
+        )
+        total = odoo.get_total_gastos_mes(
+            None if mostrar_todo else session['user_id'], year, month
+        )
     except Exception as e:
         flash(f'Error al cargar estadísticas: {str(e)}', 'error')
         total = None
@@ -242,7 +248,14 @@ def api_ciudades():
         odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
                               session['username'], session['password'])
         odoo.uid = session['user_id']
-        ciudades = odoo.get_ciudades(state_id=provincia_id, user_id=session['user_id'])
+        mostrar_todo = (
+            odoo.has_group('sales_team.group_sale_manager') or
+            odoo.has_group('sales_team.group_sale_salesman_all_leads')
+        )
+        ciudades = odoo.get_ciudades(
+            state_id=provincia_id,
+            user_id=None if mostrar_todo else session['user_id']
+        )
         return jsonify(ciudades)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -261,10 +274,14 @@ def api_buscar_clientes():
         odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
                               session['username'], session['password'])
         odoo.uid = session['user_id']
+        mostrar_todo = (
+            odoo.has_group('sales_team.group_sale_manager') or
+            odoo.has_group('sales_team.group_sale_salesman_all_leads')
+        )
 
         clientes = odoo.buscar_clientes(
             nombre_cliente,
-            user_id=session['user_id'],
+            user_id=None if mostrar_todo else session['user_id'],
             limit=int(limite),
             provincia_id=provincia_id,
             ciudad=ciudad
