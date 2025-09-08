@@ -15,7 +15,6 @@ class OdooConnection:
         # Conexiones XML-RPC
         self.common = xmlrpc.client.ServerProxy(f'{url}/xmlrpc/2/common')
         self.models = xmlrpc.client.ServerProxy(f'{url}/xmlrpc/2/object')
-        self.report = xmlrpc.client.ServerProxy(f'{url}/xmlrpc/2/report')
 
     def authenticate(self):
         """Autenticar usuario en Odoo"""
@@ -697,19 +696,18 @@ class OdooConnection:
 
             for report_name in report_names:
                 try:
-                    pdf_data = self.report.render_qweb_pdf(
-                        self.db, self.uid, self.password,
-                        report_name, [factura_id]
+                    pdf_data = self.models.execute_kw(
+                        self.db,
+                        self.uid,
+                        self.password,
+                        'ir.actions.report',
+                        'get_pdf',
+                        [[factura_id], report_name],
                     )
 
-                    if isinstance(pdf_data, (list, tuple)) and len(pdf_data) >= 1:
-                        pdf_content = pdf_data[0]
-                    else:
-                        pdf_content = pdf_data
-
-                    if isinstance(pdf_content, str):
-                        return base64.b64decode(pdf_content)
-                    return pdf_content
+                    if isinstance(pdf_data, str):
+                        return base64.b64decode(pdf_data)
+                    return pdf_data
                 except Exception as e:
                     print(f"Error con reporte {report_name}: {e}")
                     continue
