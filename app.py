@@ -167,20 +167,6 @@ def descargar_factura_pdf(factura_id):
                               session['username'], session['password'])
         odoo.uid = session['user_id']
 
-        factura = None
-        pdf_content = odoo.descargar_factura_pdf(factura_id)
-        if pdf_content:
-            factura = odoo.get_factura(factura_id)
-            filename = (
-                factura['nombre'] if factura and factura.get('nombre')
-                else f'factura_{factura_id}'
-            )
-            response = Response(pdf_content, mimetype='application/pdf')
-            response.headers['Content-Disposition'] = (
-                f'attachment; filename={filename}.pdf'
-            )
-            return response
-
         pdf_result = odoo.get_factura_pdf_info(factura_id)
         if pdf_result and pdf_result.get('status') == 'success':
             pdf_content = pdf_result.get('pdf_content')
@@ -219,8 +205,7 @@ def descargar_factura_pdf(factura_id):
             flash(instrucciones or 'No se pudo descargar el PDF automáticamente.', 'warning')
 
         # Si no se pudo obtener el PDF desde Odoo, generamos uno simple.
-        if not factura:
-            factura = odoo.get_factura(factura_id)
+        factura = odoo.get_factura(factura_id)
         if not factura:
             flash('No se pudo obtener la información de la factura', 'error')
             return redirect(request.referrer or url_for('dashboard'))
