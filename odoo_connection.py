@@ -696,31 +696,48 @@ class OdooConnection:
 
             for report_name in report_names:
                 try:
-                    # Odoo versiones recientes utilizan el método
-                    # ``_render_qweb_pdf`` para generar un PDF desde un
-                    # reporte. Recibe el nombre técnico del reporte y la lista
-                    # de ids sobre los que debe ejecutarse.
+
+                    # Intentamos primero el método público ``render_qweb_pdf``
+                    # disponible en versiones recientes de Odoo para generar
+                    # un PDF a partir de un reporte.
+
                     pdf_result = self.models.execute_kw(
                         self.db,
                         self.uid,
                         self.password,
                         'ir.actions.report',
-                        '_render_qweb_pdf',
+
+                        'render_qweb_pdf',
+
                         [report_name, [factura_id]],
                     )
+                except Exception as e_render:
+                    print(f"Error con render_qweb_pdf {report_name}: {e_render}")
+                    try:
+                        # Como alternativa, intentamos el método ``get_pdf``
+                        # utilizado en versiones antiguas de Odoo.
+                        pdf_result = self.models.execute_kw(
+                            self.db,
+                            self.uid,
+                            self.password,
+                            'ir.actions.report',
+                            'get_pdf',
+                            [[factura_id], report_name],
+                        )
+                    except Exception as e_get_pdf:
+                        print(f"Error con get_pdf {report_name}: {e_get_pdf}")
+                        continue
 
-                    # El resultado es una tupla ``(pdf, formato)`` donde ``pdf``
-                    # puede venir codificado. Normalizamos el valor para
-                    # devolver bytes puros.
-                    pdf_data = pdf_result[0] if isinstance(pdf_result, (list, tuple)) else pdf_result
-                    if hasattr(pdf_data, 'data'):
-                        pdf_data = pdf_data.data
-                    if isinstance(pdf_data, str):
-                        pdf_data = base64.b64decode(pdf_data)
-                    return pdf_data
-                except Exception as e:
-                    print(f"Error con reporte {report_name}: {e}")
-                    continue
+
+                # El resultado puede ser una tupla ``(pdf, formato)`` o un
+                # string codificado en base64. Normalizamos a bytes puros.
+                pdf_data = pdf_result[0] if isinstance(pdf_result, (list, tuple)) else pdf_result
+                if hasattr(pdf_data, 'data'):
+                    pdf_data = pdf_data.data
+                if isinstance(pdf_data, str):
+                    pdf_data = base64.b64decode(pdf_data)
+                return pdf_data
+
 
             print("No se pudo generar el PDF con ningún método disponible")
             return None
