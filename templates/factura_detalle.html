@@ -92,11 +92,15 @@
 {% set pdf_url = url_for('descargar_factura_pdf', factura_id=factura.id, _external=True) %}
 <script>
 const pdfUrl = '{{ pdf_url }}';
-document.getElementById('share-button').addEventListener('click', async function() {
+document.getElementById('share-button').addEventListener('click', async () => {
     try {
-        const response = await fetch(pdfUrl);
+        const response = await fetch(pdfUrl, { credentials: 'include' });
+        if (!response.ok) throw new Error('No se pudo obtener el PDF');
+
         const blob = await response.blob();
-        const file = new File([blob], 'factura_{{ factura.id }}.pdf', { type: 'application/pdf' });
+        const file = new File([blob], 'factura_{{ factura.id }}.pdf', {
+            type: 'application/pdf'
+        });
 
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
             await navigator.share({
@@ -104,11 +108,10 @@ document.getElementById('share-button').addEventListener('click', async function
                 text: 'Factura {{ factura.nombre }} - Total ${{ "%.2f"|format(factura.total) }}',
                 files: [file]
             });
-        } else {
-            throw new Error('Web Share API no soportado');
+            return;
         }
+        throw new Error('Web Share API no soportado');
     } catch (e) {
-
         const modal = new bootstrap.Modal(document.getElementById('shareModal'));
         modal.show();
     }
