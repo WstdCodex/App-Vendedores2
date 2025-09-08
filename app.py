@@ -216,6 +216,12 @@ def descargar_factura_pdf(factura_id):
         p.drawString(50, y, f"Total: ${factura['total']:.2f}")
         y -= 15
         p.drawString(50, y, f"Importe adeudado: ${factura['amount_residual']:.2f}")
+        y -= 15
+        if factura.get('cae'):
+            p.drawString(50, y, f"CAE: {factura['cae']}")
+            y -= 15
+        if factura.get('cae_due_date'):
+            p.drawString(50, y, f"Vencimiento CAE: {factura['cae_due_date']}")
         p.showPage()
         p.save()
         buffer.seek(0)

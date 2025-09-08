@@ -673,9 +673,15 @@ class OdooConnection:
                 [factura_id],
                 {
                     'fields': [
-                        'name', 'invoice_date', 'amount_total',
-                        'invoice_partner_display_name', 'invoice_line_ids',
-                        'tax_totals_json', 'amount_residual'
+                        'name',
+                        'invoice_date',
+                        'amount_total',
+                        'invoice_partner_display_name',
+                        'invoice_line_ids',
+                        'tax_totals_json',
+                        'amount_residual',
+                        'l10n_ar_afip_auth_code',
+                        'l10n_ar_afip_auth_code_due',
                     ]
                 }
             )
@@ -734,6 +740,10 @@ class OdooConnection:
                 'iva_21': iva_21,
                 'perc_iibb_arba': perc_iibb,
                 'amount_residual': f.get('amount_residual', 0.0),
+                'cae': f.get('l10n_ar_afip_auth_code', ''),
+                'cae_due_date': self._format_date(
+                    f.get('l10n_ar_afip_auth_code_due')
+                ),
                 'lineas': lineas
             }
         except Exception as e:
