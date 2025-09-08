@@ -172,7 +172,9 @@ def descargar_factura_pdf(factura_id):
         width, height = letter
 
         # Dibujar el logo en la esquina superior izquierda
+
         logo_path = os.path.join(app.root_path, 'static', 'standard_logo.png')
+
         logo_w, logo_h = 120, 40
         try:
             p.drawImage(logo_path, 40, height - logo_h - 40,
