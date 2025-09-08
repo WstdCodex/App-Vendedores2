@@ -26,7 +26,7 @@ ODOO_CONFIG = {
     'url': 'https://wstd.ar',  # URL de tu servidor Odoo
     'db': 'odoo',  # Nombre de tu base de datos Odoo
     # Credenciales usadas para descargar/compartir PDFs de facturas
-    'report_user': 'lucas@wstandar.com.ar',
+    'report_user': 'lucas@wstandard.com.ar',
     'report_password': 'lks.1822.95',
 }
 
