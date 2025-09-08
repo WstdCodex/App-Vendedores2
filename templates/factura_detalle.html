@@ -37,7 +37,8 @@
                                 <th>Descripción</th>
                                 <th>Cantidad</th>
                                 <th>Precio Unitario</th>
-                                <th>Subtotal</th>
+                                <th>IVA 21%</th>
+                                <th>Total</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -46,7 +47,8 @@
                                 <td>{{ linea.descripcion }}</td>
                                 <td>{{ linea.cantidad }}</td>
                                 <td>${{ "%.2f"|format(linea.precio_unitario) }}</td>
-                                <td>${{ "%.2f"|format(linea.subtotal) }}</td>
+                                <td>${{ "%.2f"|format(linea.iva) }}</td>
+                                <td>${{ "%.2f"|format(linea.total) }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>

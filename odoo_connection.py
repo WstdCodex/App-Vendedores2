@@ -3,6 +3,7 @@ import xmlrpc.client
 from datetime import datetime, date
 from calendar import monthrange
 import base64
+import json
 
 class OdooConnection:
     def __init__(self, url, db, username, password):
@@ -673,7 +674,8 @@ class OdooConnection:
                 {
                     'fields': [
                         'name', 'invoice_date', 'amount_total',
-                        'invoice_partner_display_name', 'invoice_line_ids'
+                        'invoice_partner_display_name', 'invoice_line_ids',
+                        'tax_totals_json', 'amount_residual'
                     ]
                 }
             )
@@ -687,17 +689,40 @@ class OdooConnection:
                     self.db, self.uid, self.password,
                     'account.move.line', 'read',
                     [f['invoice_line_ids']],
-                    {'fields': ['name', 'quantity', 'price_unit', 'price_total']}
+                    {
+                        'fields': [
+                            'name', 'quantity', 'price_unit',
+                            'price_total', 'price_subtotal'
+                        ]
+                    }
                 )
                 lineas = [
                     {
                         'descripcion': l.get('name', ''),
                         'cantidad': l.get('quantity', 0),
                         'precio_unitario': l.get('price_unit', 0.0),
-                        'subtotal': l.get('price_total', 0.0)
+                        'iva': l.get('price_total', 0.0) - l.get('price_subtotal', 0.0),
+                        'total': l.get('price_total', 0.0)
                     }
                     for l in lineas_data
                 ]
+
+            tax_totals = {}
+            try:
+                tax_totals = json.loads(f.get('tax_totals_json') or '{}')
+            except Exception:
+                tax_totals = {}
+            amount_untaxed = tax_totals.get('amount_untaxed', 0.0)
+            iva_21 = 0.0
+            perc_iibb = 0.0
+            groups = tax_totals.get('groups_by_subtotal', {})
+            for group_lines in groups.values():
+                for g in group_lines:
+                    name = (g.get('tax_group_name') or g.get('name') or '').upper()
+                    if 'IVA 21' in name:
+                        iva_21 += g.get('tax_group_amount', 0.0)
+                    if 'PERC IIBB ARBA' in name:
+                        perc_iibb += g.get('tax_group_amount', 0.0)
 
             return {
                 'id': f.get('id'),
@@ -705,6 +730,10 @@ class OdooConnection:
                 'fecha': self._format_date(f.get('invoice_date')),
                 'cliente': f.get('invoice_partner_display_name', ''),
                 'total': f.get('amount_total', 0.0),
+                'importe_untaxed': amount_untaxed,
+                'iva_21': iva_21,
+                'perc_iibb_arba': perc_iibb,
+                'amount_residual': f.get('amount_residual', 0.0),
                 'lineas': lineas
             }
         except Exception as e:
