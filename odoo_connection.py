@@ -884,23 +884,50 @@ class OdooConnection:
 
                 return base64.b64decode(pdf_b64)
             except Exception:
-                # Odoo 16+ removed ``render_qweb_pdf``; fall back to ``get_pdf``
+                # Odoo 16+ removed ``render_qweb_pdf``; try the newer
+                # ``_render_qweb_pdf`` API first and fall back to
+                # ``get_pdf`` for legacy versions.
                 try:
-                    result = self.models.execute_kw(
+                    report_ids = self.models.execute_kw(
                         self.db, uid, login_pass,
-                        'ir.actions.report', 'get_pdf',
-                        [[factura_id], rep_name]
+                        'ir.actions.report', 'search',
+                        [[('report_name', '=', rep_name)]],
+                        {'limit': 1}
                     )
+                    if report_ids:
+                        result = self.models.execute_kw(
+                            self.db, uid, login_pass,
+                            'ir.actions.report', '_render_qweb_pdf',
+                            [[report_ids[0]], [factura_id]]
+                        )
+                        if isinstance(result, (list, tuple)):
+                            pdf_b64 = result[0]
+                        else:
+                            pdf_b64 = result
 
-                    if isinstance(result, xmlrpc.client.Binary):
-                        return result.data
-                    if isinstance(result, bytes):
-                        return result
-                    if isinstance(result, str):
-                        return base64.b64decode(result)
-                except Exception as e2:
-                    print(f"Error renderizando PDF via RPC: {e2}")
-                    return None
+                        if isinstance(pdf_b64, xmlrpc.client.Binary):
+                            return pdf_b64.data
+                        if isinstance(pdf_b64, bytes):
+                            return pdf_b64
+                        if isinstance(pdf_b64, str):
+                            return base64.b64decode(pdf_b64)
+                except Exception:
+                    try:
+                        result = self.models.execute_kw(
+                            self.db, uid, login_pass,
+                            'ir.actions.report', 'get_pdf',
+                            [[factura_id], rep_name]
+                        )
+
+                        if isinstance(result, xmlrpc.client.Binary):
+                            return result.data
+                        if isinstance(result, bytes):
+                            return result
+                        if isinstance(result, str):
+                            return base64.b64decode(result)
+                    except Exception as e2:
+                        print(f"Error renderizando PDF via RPC: {e2}")
+                        return None
         except Exception as e:
             print(f"Error renderizando PDF via RPC: {e}")
             return None
