@@ -1,6 +1,7 @@
 # requirements.txt
 Flask==2.3.3
 Werkzeug==2.3.7
+reportlab==3.6.12
 
 # Para desarrollo (opcional)
 python-dotenv==1.0.0
