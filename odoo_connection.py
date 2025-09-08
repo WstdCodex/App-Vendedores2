@@ -916,8 +916,17 @@ class OdooConnection:
             print(f"Error descargando PDF con sesión: {e}")
             return None
 
-    def get_factura_pdf_info(self, factura_id):
-        """Obtener información completa para descargar PDF"""
+    def get_factura_pdf_info(self, factura_id, username=None, password=None):
+        """Obtener información completa para descargar PDF.
+
+        Parameters
+        ----------
+        factura_id: int
+            ID de la factura a descargar.
+        username, password: str, optional
+            Credenciales alternativas para la descarga del PDF. Si no se
+            proporcionan se usarán las de la conexión actual.
+        """
         try:
             # Verificar que la factura existe
             factura = self.models.execute_kw(
@@ -939,8 +948,10 @@ class OdooConnection:
             if not pdf_info:
                 return {'error': 'No se pudo obtener información del reporte'}
 
-            # Intentar descarga automática
-            pdf_content = self.download_pdf_with_session(factura_id)
+            # Intentar descarga automática con posibles credenciales alternativas
+            pdf_content = self.download_pdf_with_session(
+                factura_id, username=username, password=password
+            )
 
             result = {
                 'factura_id': factura_id,
