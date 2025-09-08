@@ -5,6 +5,7 @@ from datetime import datetime
 from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
+import os
 
 app = Flask(__name__)
 app.secret_key = 'tu_clave_secreta_aqui'  # Cambiar por una clave segura
@@ -169,7 +170,17 @@ def descargar_factura_pdf(factura_id):
         buffer = BytesIO()
         p = canvas.Canvas(buffer, pagesize=letter)
         width, height = letter
-        y = height - 50
+
+        # Dibujar el logo en la esquina superior izquierda
+        logo_path = os.path.join(app.root_path, 'static', 'standard_logo.png')
+        logo_w, logo_h = 120, 40
+        try:
+            p.drawImage(logo_path, 40, height - logo_h - 40,
+                        width=logo_w, height=logo_h, mask='auto')
+        except Exception:
+            pass
+
+        y = height - logo_h - 60
         p.setFont('Helvetica-Bold', 14)
         p.drawString(50, y, f"Factura: {factura['nombre']}")
         y -= 20
