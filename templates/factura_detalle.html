@@ -118,7 +118,32 @@ document.getElementById('share-button').addEventListener('click', async () => {
 });
 
 
-document.getElementById('whatsappShare').href = `https://wa.me/?text=${encodeURIComponent(pdfUrl)}`;
+const whatsappShare = document.getElementById('whatsappShare');
+whatsappShare.href = `https://wa.me/?text=${encodeURIComponent(pdfUrl)}`;
+whatsappShare.addEventListener('click', async (e) => {
+    e.preventDefault();
+    try {
+        const response = await fetch(pdfUrl, { credentials: 'include' });
+        if (!response.ok) throw new Error('No se pudo obtener el PDF');
+
+        const blob = await response.blob();
+        const file = new File([blob], 'factura_{{ factura.id }}.pdf', {
+            type: 'application/pdf'
+        });
+
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+                title: 'Factura {{ factura.nombre }}',
+                files: [file]
+            });
+            return;
+        }
+    } catch (err) {
+        // Si no se puede compartir el archivo, se sigue con el enlace
+    }
+    window.open(`https://wa.me/?text=${encodeURIComponent(pdfUrl)}`, '_blank');
+});
+
 document.getElementById('gmailShare').href = `mailto:?subject=${encodeURIComponent('Factura ' + '{{ factura.nombre }}')}&body=${encodeURIComponent(pdfUrl)}`;
 document.getElementById('instagramShare').href = `https://www.instagram.com/?url=${encodeURIComponent(pdfUrl)}`;
 
