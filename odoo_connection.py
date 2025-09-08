@@ -848,6 +848,45 @@ class OdooConnection:
         base_url = self.url.rstrip('/')
         return f"{base_url}/report/pdf/account.report_invoice_with_payments/{factura_id}?db={self.db}"
 
+
+    def render_factura_pdf_rpc(self, factura_id, report_name=None, username=None, password=None):
+        """Renderizar el PDF de una factura usando XML-RPC.
+
+        Permite especificar credenciales alternativas (por ejemplo un usuario
+        con más permisos) y un nombre de reporte concreto. Devuelve el PDF en
+        bytes o ``None`` si ocurre un error.
+        """
+        try:
+            login_user = username or self.username
+            login_pass = password or self.password
+
+            # Obtener UID con las credenciales proporcionadas si son distintas
+            uid = self.uid
+            if username or password:
+                uid = self.common.authenticate(self.db, login_user, login_pass, {})
+                if not uid:
+                    print("No se pudo autenticar para renderizar PDF")
+                    return None
+
+            rep_name = report_name or 'account.report_invoice_with_payments'
+
+            result = self.models.execute_kw(
+                self.db, uid, login_pass,
+                'ir.actions.report', 'render_qweb_pdf',
+                [rep_name, [factura_id]]
+            )
+
+            if isinstance(result, (list, tuple)):
+                pdf_b64 = result[0]
+            else:
+                pdf_b64 = result
+
+            return base64.b64decode(pdf_b64)
+        except Exception as e:
+            print(f"Error renderizando PDF via RPC: {e}")
+            return None
+
+
     def download_pdf_with_session(self, factura_id, username=None, password=None):
         """Descargar PDF usando sesión HTTP directa"""
         try:
@@ -962,8 +1001,33 @@ class OdooConnection:
             if factura_data.get('move_type') != 'out_invoice':
                 return {'error': 'El documento no es una factura de venta'}
 
-            # Obtener URLs posibles
+            # Obtener URLs posibles y nombre de reporte
             pdf_info = self.get_factura_pdf(factura_id)
+
+            report_name = None
+            if pdf_info:
+                report_name = pdf_info.get('report_name')
+            else:
+                print('No se pudo determinar el reporte, usando nombre por defecto')
+
+            # Intentar primero renderizar el PDF vía RPC
+            pdf_content = self.render_factura_pdf_rpc(
+                factura_id,
+                report_name=report_name,
+                username=username,
+                password=password
+            )
+
+            if pdf_content:
+                return {
+                    'factura_id': factura_id,
+                    'factura_name': factura_data.get('name'),
+                    'factura_state': factura_data.get('state'),
+                    'pdf_info': pdf_info,
+                    'download_attempted': True,
+                    'pdf_content': pdf_content,
+                    'status': 'success'
+                }
 
             if not pdf_info:
                 return {'error': 'No se pudo obtener información del reporte'}
