@@ -4,6 +4,7 @@ from datetime import datetime, date
 from calendar import monthrange
 import base64
 import json
+import re
 
 class OdooConnection:
     def __init__(self, url, db, username, password):
@@ -876,7 +877,7 @@ class OdooConnection:
             except Exception as e:
                 print(f"Error con autenticación básica: {e}")
 
-            # Método 2: Login web tradicional
+            # Método 2: Login web tradicional con CSRF
             try:
                 login_url = f"{base_url}/web/login"
                 login_data = {
@@ -885,10 +886,20 @@ class OdooConnection:
                     'db': self.db
                 }
 
-                # Hacer POST al login
+                # Obtener página de login para extraer el token CSRF
+                try:
+                    login_page = session.get(login_url)
+                    if login_page.status_code == 200:
+                        match = re.search(r'name="csrf_token" value="([^"]+)"', login_page.text)
+                        if match:
+                            login_data['csrf_token'] = match.group(1)
+                except Exception as e:
+                    print(f"No se pudo obtener csrf_token: {e}")
+
+                # Hacer POST al login con el token (si se obtuvo)
                 login_response = session.post(login_url, data=login_data, allow_redirects=True)
 
-                if login_response.status_code == 200:
+                if login_response.status_code in (200, 302):
                     # Verificar si el login fue exitoso
                     if 'web/login' not in login_response.url:
                         # Login exitoso, ahora descargar PDF
