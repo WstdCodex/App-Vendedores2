@@ -765,6 +765,7 @@ class OdooConnection:
                 # Desde Odoo 17 el método público ``render_qweb_pdf`` fue
                 # reemplazado por ``_render_qweb_pdf`` que se ejecuta sobre el
                 # registro del reporte. Primero intentamos con esta variante.
+                report_id = None
                 try:
                     report_ids = self.models.execute_kw(
                         self.db,
@@ -776,13 +777,14 @@ class OdooConnection:
                         {'limit': 1},
                     )
                     if report_ids:
+                        report_id = report_ids[0]
                         pdf_result = self.models.execute_kw(
                             self.db,
                             self.uid,
                             self.password,
                             'ir.actions.report',
                             '_render_qweb_pdf',
-                            [report_ids, [factura_id]],
+                            [[report_id], [factura_id]],
                         )
                 except Exception as e_render_new:
                     print(f"Error con _render_qweb_pdf {report_name}: {e_render_new}")
@@ -804,15 +806,30 @@ class OdooConnection:
                         try:
                             # Último recurso: usar ``report_action`` que es el
                             # método público disponible en las versiones
-                            # recientes de Odoo.
-                            pdf_result = self.models.execute_kw(
-                                self.db,
-                                self.uid,
-                                self.password,
-                                'ir.actions.report',
-                                'report_action',
-                                [report_name, [factura_id]],
-                            )
+                            # recientes de Odoo. Este método requiere el ID
+                            # numérico del reporte, no su nombre.
+                            if report_id is None:
+                                report_ids = self.models.execute_kw(
+                                    self.db,
+                                    self.uid,
+                                    self.password,
+                                    'ir.actions.report',
+                                    'search',
+                                    [[['report_name', '=', report_name]]],
+                                    {'limit': 1},
+                                )
+                                report_id = report_ids and report_ids[0]
+                            if report_id:
+                                pdf_result = self.models.execute_kw(
+                                    self.db,
+                                    self.uid,
+                                    self.password,
+                                    'ir.actions.report',
+                                    'report_action',
+                                    [[report_id], [factura_id]],
+                                )
+                            else:
+                                continue
                         except Exception as e_report_action:
                             print(
                                 f"Error con report_action {report_name}: {e_report_action}"
