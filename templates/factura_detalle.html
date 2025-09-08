@@ -18,7 +18,7 @@
             <div class="card-body">
                 <p class="mb-1"><strong>Cliente:</strong> {{ factura.cliente }}</p>
                 <p class="mb-1"><strong>Fecha:</strong> {{ factura.fecha }}</p>
-                <p class="mb-1"><strong>Total:</strong> ${{ "%.2f"|format(factura.total) }}</p>
+                <p class="mb-1"><strong>Total:</strong> ${{ factura.total|format_currency }}</p>
                 <a href="{{ url_for('descargar_factura_pdf', factura_id=factura.id) }}" class="btn btn-primary mt-3">
                     <i class="fas fa-download me-2"></i>Descargar PDF
                 </a>
@@ -46,9 +46,9 @@
                             <tr>
                                 <td>{{ linea.descripcion }}</td>
                                 <td>{{ linea.cantidad }}</td>
-                                <td>${{ "%.2f"|format(linea.precio_unitario) }}</td>
-                                <td>${{ "%.2f"|format(linea.iva) }}</td>
-                                <td>${{ "%.2f"|format(linea.total) }}</td>
+                                <td>${{ linea.precio_unitario|format_currency }}</td>
+                                <td>${{ linea.iva|format_currency }}</td>
+                                <td>${{ linea.total|format_currency }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -105,7 +105,7 @@ document.getElementById('share-button').addEventListener('click', async () => {
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
             await navigator.share({
                 title: 'Factura {{ factura.nombre }}',
-                text: 'Factura {{ factura.nombre }} - Total ${{ "%.2f"|format(factura.total) }}',
+                text: 'Factura {{ factura.nombre }} - Total ${{ factura.total|format_currency }}',
                 files: [file]
             });
             return;
