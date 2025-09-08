@@ -751,39 +751,60 @@ class OdooConnection:
             return None
 
     def get_factura_pdf(self, factura_id):
-        """Obtener el PDF de una factura - Versión corregida para Odoo 15"""
+        """Obtener el PDF de una factura - Versión para Odoo 15 Community"""
         try:
-            # En Odoo 15, necesitamos usar _render_qweb_pdf en lugar de render_qweb_pdf
-            # y el reporte se llama directamente con su nombre técnico
+            # Método 1: Usar el reporte directamente con _generate_pdf si existe
+            try:
+                # Primero obtenemos el reporte de factura
+                reports = self.models.execute_kw(
+                    self.db, self.uid, self.password,
+                    'ir.actions.report', 'search',
+                    [[
+                        ('model', '=', 'account.move'),
+                        ('report_type', '=', 'qweb-pdf')
+                    ]], {'limit': 1}
+                )
 
-            # Lista de nombres de reportes comunes para facturas en Odoo 15
-            report_names = [
-                'account.report_invoice_with_payments',
-                'account.report_invoice',
-                'account.account_invoices',
-            ]
+                if reports:
+                    report_id = reports[0]
 
-            for report_name in report_names:
-                try:
-                    # Método correcto para Odoo 15
-                    pdf_data = self.models.execute_kw(
+                    # Obtener el objeto reporte
+                    report_data = self.models.execute_kw(
                         self.db, self.uid, self.password,
-                        'ir.actions.report', '_render_qweb_pdf',
-                        [report_name, [factura_id]]
+                        'ir.actions.report', 'read',
+                        [report_id], {'fields': ['report_name']}
                     )
 
-                    # _render_qweb_pdf devuelve una tupla (pdf_content, format)
-                    if isinstance(pdf_data, (list, tuple)) and len(pdf_data) >= 1:
-                        pdf_content = pdf_data[0]
-                        if isinstance(pdf_content, str):
-                            return base64.b64decode(pdf_content)
-                        return pdf_content
+                    if report_data:
+                        report_name = report_data[0]['report_name']
 
-                except Exception as e:
-                    print(f"Error con reporte {report_name}: {e}")
-                    continue
+                        # Intentar con _generate_pdf
+                        try:
+                            pdf_result = self.models.execute_kw(
+                                self.db, self.uid, self.password,
+                                'ir.actions.report', '_generate_pdf',
+                                [report_id, [factura_id]]
+                            )
 
-            # Si no funciona con los nombres directos, buscar el reporte
+                            if pdf_result:
+                                # _generate_pdf puede devolver el PDF directamente o en una estructura
+                                if isinstance(pdf_result, bytes):
+                                    return pdf_result
+                                elif isinstance(pdf_result, str):
+                                    return base64.b64decode(pdf_result)
+                                elif isinstance(pdf_result, (list, tuple)) and len(pdf_result) > 0:
+                                    pdf_content = pdf_result[0]
+                                    if isinstance(pdf_content, str):
+                                        return base64.b64decode(pdf_content)
+                                    return pdf_content
+
+                        except Exception as e:
+                            print(f"Error con _generate_pdf: {e}")
+
+            except Exception as e:
+                print(f"Error método 1: {e}")
+
+            # Método 2: Usar el método _render_template si existe
             try:
                 reports = self.models.execute_kw(
                     self.db, self.uid, self.password,
@@ -792,69 +813,168 @@ class OdooConnection:
                         ('model', '=', 'account.move'),
                         ('report_type', '=', 'qweb-pdf')
                     ]],
-                    {'fields': ['report_name'], 'limit': 1}
+                    {'fields': ['id', 'report_name'], 'limit': 1}
                 )
 
                 if reports:
-                    report_name = reports[0]['report_name']
-                    pdf_data = self.models.execute_kw(
-                        self.db, self.uid, self.password,
-                        'ir.actions.report', '_render_qweb_pdf',
-                        [report_name, [factura_id]]
-                    )
+                    report_id = reports[0]['id']
 
-                    if isinstance(pdf_data, (list, tuple)) and len(pdf_data) >= 1:
-                        pdf_content = pdf_data[0]
-                        if isinstance(pdf_content, str):
-                            return base64.b64decode(pdf_content)
-                        return pdf_content
-
-            except Exception as e:
-                print(f"Error en búsqueda de reporte: {e}")
-
-            # Método alternativo: usar el modelo account.move directamente
-            try:
-                # Algunas versiones permiten generar el PDF directamente desde el modelo
-                factura_data = self.models.execute_kw(
-                    self.db, self.uid, self.password,
-                    'account.move', 'read',
-                    [factura_id], {'fields': ['id']}
-                )
-
-                if factura_data:
-                    # Intentar con el método action_invoice_print si existe
                     try:
-                        action_result = self.models.execute_kw(
+                        pdf_result = self.models.execute_kw(
                             self.db, self.uid, self.password,
-                            'account.move', 'action_invoice_print',
-                            [[factura_id]]
+                            'ir.actions.report', '_render_template',
+                            [report_id, [factura_id]]
                         )
 
-                        if isinstance(action_result, dict) and 'report_name' in action_result:
-                            pdf_data = self.models.execute_kw(
-                                self.db, self.uid, self.password,
-                                'ir.actions.report', '_render_qweb_pdf',
-                                [action_result['report_name'], [factura_id]]
-                            )
-
-                            if isinstance(pdf_data, (list, tuple)) and len(pdf_data) >= 1:
-                                pdf_content = pdf_data[0]
-                                if isinstance(pdf_content, str):
-                                    return base64.b64decode(pdf_content)
-                                return pdf_content
+                        if pdf_result:
+                            if isinstance(pdf_result, bytes):
+                                return pdf_result
+                            elif isinstance(pdf_result, str):
+                                return base64.b64decode(pdf_result)
 
                     except Exception as e:
-                        print(f"Error con action_invoice_print: {e}")
+                        print(f"Error con _render_template: {e}")
 
             except Exception as e:
-                print(f"Error con método alternativo: {e}")
+                print(f"Error método 2: {e}")
 
-            print("No se pudo generar el PDF con ningún método disponible")
+            # Método 3: Usar el contexto de la factura para obtener el reporte
+            try:
+                # Obtener la acción de impresión de la factura
+                action_result = self.models.execute_kw(
+                    self.db, self.uid, self.password,
+                    'account.move', 'action_invoice_print',
+                    [[factura_id]]
+                )
+
+                if isinstance(action_result, dict):
+                    report_id = action_result.get('id')
+                    report_name = action_result.get('report_name')
+
+                    if report_id:
+                        try:
+                            # Usar browse y print_document si está disponible
+                            pdf_result = self.models.execute_kw(
+                                self.db, self.uid, self.password,
+                                'ir.actions.report', 'browse',
+                                [report_id]
+                            )
+
+                            if pdf_result:
+                                # Intentar generar el PDF
+                                pdf_content = self.models.execute_kw(
+                                    self.db, self.uid, self.password,
+                                    'ir.actions.report', 'render_qweb_pdf',
+                                    [[report_id], [factura_id]]
+                                )
+
+                                if pdf_content:
+                                    if isinstance(pdf_content, (list, tuple)):
+                                        return pdf_content[0] if pdf_content else None
+                                    return pdf_content
+
+                        except Exception as e:
+                            print(f"Error con browse/render: {e}")
+
+            except Exception as e:
+                print(f"Error método 3: {e}")
+
+            # Método 4: Enfoque directo con wkhtmltopdf si está disponible
+            try:
+                # Obtener el HTML de la factura primero
+                reports = self.models.execute_kw(
+                    self.db, self.uid, self.password,
+                    'ir.actions.report', 'search_read',
+                    [[('model', '=', 'account.move')]],
+                    {'fields': ['id', 'report_name'], 'limit': 1}
+                )
+
+                if reports:
+                    report_id = reports[0]['id']
+
+                    # Intentar obtener el HTML primero
+                    try:
+                        html_result = self.models.execute_kw(
+                            self.db, self.uid, self.password,
+                            'ir.actions.report', '_render_qweb_html',
+                            [report_id, [factura_id]]
+                        )
+
+                        if html_result:
+                            print("HTML obtenido, pero necesitamos convertir a PDF...")
+                            # Aquí necesitaríamos wkhtmltopdf, pero no podemos acceder directamente
+
+                    except Exception as e:
+                        print(f"Error obteniendo HTML: {e}")
+
+            except Exception as e:
+                print(f"Error método 4: {e}")
+
+            # Si llegamos aquí, ningún método funcionó
+            print("No se pudo generar el PDF con ningún método disponible en Odoo 15")
+            print("Verifica que:")
+            print("1. El módulo 'account' esté instalado")
+            print("2. Los reportes PDF estén configurados correctamente")
+            print("3. wkhtmltopdf esté instalado en el servidor Odoo")
+
             return None
 
         except Exception as e:
             print(f"Error general obteniendo PDF de factura: {e}")
             return None
+
+    def debug_available_methods(self):
+        """Método para debuggear qué métodos están disponibles en ir.actions.report"""
+        methods_to_test = [
+            '_generate_pdf',
+            '_render_template',
+            '_render_qweb_html',
+            '_render_qweb_pdf',
+            'render_qweb_pdf',
+            '_render',
+            'sudo'
+        ]
+
+        print("Métodos disponibles en ir.actions.report:")
+        for method in methods_to_test:
+            try:
+                # Solo intentar llamar métodos que no requieren parámetros específicos
+                if method == 'sudo':
+                    result = self.models.execute_kw(
+                        self.db, self.uid, self.password,
+                        'ir.actions.report', 'sudo', []
+                    )
+                    print(f"✓ {method} - disponible")
+                else:
+                    # Para otros métodos, solo verificamos si existen sin ejecutarlos completamente
+                    print(f"? {method} - verificando...")
+            except Exception as e:
+                if "has no attribute" in str(e):
+                    print(f"✗ {method} - NO disponible")
+                else:
+                    print(f"✓ {method} - disponible pero falló en ejecución: {str(e)[:50]}...")
+
+    def debug_invoice_reports(self):
+        """Debuggear reportes específicos de facturas"""
+        try:
+            reports = self.models.execute_kw(
+                self.db, self.uid, self.password,
+                'ir.actions.report', 'search_read',
+                [[('model', '=', 'account.move')]],
+                {'fields': ['id', 'name', 'report_name', 'report_type', 'print_report_name']}
+            )
+
+            print(f"\nReportes disponibles para account.move ({len(reports)} encontrados):")
+            for report in reports:
+                print(f"ID: {report.get('id')}")
+                print(f"  Nombre: {report.get('name')}")
+                print(f"  Report Name: {report.get('report_name')}")
+                print(f"  Tipo: {report.get('report_type')}")
+                print(f"  Print Name: {report.get('print_report_name')}")
+                print("  ---")
+
+        except Exception as e:
+            print(f"Error obteniendo reportes: {e}")
 
     def debug_available_reports(self):
         """Método para debuggear qué reportes están disponibles para account.move"""
