@@ -750,177 +750,194 @@ class OdooConnection:
             print(f"Error obteniendo factura: {e}")
             return None
 
+
     def get_factura_pdf(self, factura_id):
-        """Obtener el PDF de una factura - Versión para Odoo 15 Community"""
+        """Obtener el PDF de una factura - Solo métodos públicos para Odoo 15"""
         try:
-            # Método 1: Usar el reporte directamente con _generate_pdf si existe
+            # Método 1: Usar la acción de impresión de la factura y extraer la URL
             try:
-                # Primero obtenemos el reporte de factura
-                reports = self.models.execute_kw(
-                    self.db, self.uid, self.password,
-                    'ir.actions.report', 'search',
-                    [[
-                        ('model', '=', 'account.move'),
-                        ('report_type', '=', 'qweb-pdf')
-                    ]], {'limit': 1}
-                )
-
-                if reports:
-                    report_id = reports[0]
-
-                    # Obtener el objeto reporte
-                    report_data = self.models.execute_kw(
-                        self.db, self.uid, self.password,
-                        'ir.actions.report', 'read',
-                        [report_id], {'fields': ['report_name']}
-                    )
-
-                    if report_data:
-                        report_name = report_data[0]['report_name']
-
-                        # Intentar con _generate_pdf
-                        try:
-                            pdf_result = self.models.execute_kw(
-                                self.db, self.uid, self.password,
-                                'ir.actions.report', '_generate_pdf',
-                                [report_id, [factura_id]]
-                            )
-
-                            if pdf_result:
-                                # _generate_pdf puede devolver el PDF directamente o en una estructura
-                                if isinstance(pdf_result, bytes):
-                                    return pdf_result
-                                elif isinstance(pdf_result, str):
-                                    return base64.b64decode(pdf_result)
-                                elif isinstance(pdf_result, (list, tuple)) and len(pdf_result) > 0:
-                                    pdf_content = pdf_result[0]
-                                    if isinstance(pdf_content, str):
-                                        return base64.b64decode(pdf_content)
-                                    return pdf_content
-
-                        except Exception as e:
-                            print(f"Error con _generate_pdf: {e}")
-
-            except Exception as e:
-                print(f"Error método 1: {e}")
-
-            # Método 2: Usar el método _render_template si existe
-            try:
-                reports = self.models.execute_kw(
-                    self.db, self.uid, self.password,
-                    'ir.actions.report', 'search_read',
-                    [[
-                        ('model', '=', 'account.move'),
-                        ('report_type', '=', 'qweb-pdf')
-                    ]],
-                    {'fields': ['id', 'report_name'], 'limit': 1}
-                )
-
-                if reports:
-                    report_id = reports[0]['id']
-
-                    try:
-                        pdf_result = self.models.execute_kw(
-                            self.db, self.uid, self.password,
-                            'ir.actions.report', '_render_template',
-                            [report_id, [factura_id]]
-                        )
-
-                        if pdf_result:
-                            if isinstance(pdf_result, bytes):
-                                return pdf_result
-                            elif isinstance(pdf_result, str):
-                                return base64.b64decode(pdf_result)
-
-                    except Exception as e:
-                        print(f"Error con _render_template: {e}")
-
-            except Exception as e:
-                print(f"Error método 2: {e}")
-
-            # Método 3: Usar el contexto de la factura para obtener el reporte
-            try:
-                # Obtener la acción de impresión de la factura
                 action_result = self.models.execute_kw(
                     self.db, self.uid, self.password,
                     'account.move', 'action_invoice_print',
                     [[factura_id]]
                 )
 
-                if isinstance(action_result, dict):
+                if isinstance(action_result, dict) and action_result.get('type') == 'ir.actions.report':
                     report_id = action_result.get('id')
-                    report_name = action_result.get('report_name')
+                    report_name = action_result.get('report_name', '')
 
+                    print(f"Reporte encontrado - ID: {report_id}, Nombre: {report_name}")
+
+                    # Intentar con el método público 'sudo' que puede darnos acceso
                     if report_id:
                         try:
-                            # Usar browse y print_document si está disponible
-                            pdf_result = self.models.execute_kw(
+                            # Obtener el reporte usando browse (método público)
+                            report_obj = self.models.execute_kw(
                                 self.db, self.uid, self.password,
                                 'ir.actions.report', 'browse',
-                                [report_id]
+                                [[report_id]]
                             )
 
-                            if pdf_result:
-                                # Intentar generar el PDF
-                                pdf_content = self.models.execute_kw(
-                                    self.db, self.uid, self.password,
-                                    'ir.actions.report', 'render_qweb_pdf',
-                                    [[report_id], [factura_id]]
+                            if report_obj:
+                                print(f"Objeto reporte obtenido: {type(report_obj)}")
+
+                                # Como no podemos usar métodos privados, vamos a construir la URL
+                                # y sugerir descarga directa
+                                base_url = self.url.rstrip('/')
+                                pdf_url = (
+                                    f"{base_url}/web/content/{report_id}?model=ir.actions.report&field="
+                                    f"&filename_field=&id={factura_id}&download=true"
                                 )
 
-                                if pdf_content:
-                                    if isinstance(pdf_content, (list, tuple)):
-                                        return pdf_content[0] if pdf_content else None
-                                    return pdf_content
+                                print(f"URL para descargar PDF: {pdf_url}")
+                                return {
+                                    'url': pdf_url,
+                                    'report_id': report_id,
+                                    'report_name': report_name,
+                                    'method': 'download_url'
+                                }
 
                         except Exception as e:
-                            print(f"Error con browse/render: {e}")
+                            print(f"Error con browse: {e}")
 
             except Exception as e:
-                print(f"Error método 3: {e}")
+                print(f"Error con action_invoice_print: {e}")
 
-            # Método 4: Enfoque directo con wkhtmltopdf si está disponible
+            # Método 2: Buscar reporte manualmente y construir URL
             try:
-                # Obtener el HTML de la factura primero
                 reports = self.models.execute_kw(
                     self.db, self.uid, self.password,
                     'ir.actions.report', 'search_read',
-                    [[('model', '=', 'account.move')]],
-                    {'fields': ['id', 'report_name'], 'limit': 1}
+                    [
+                        (
+                            ('model', '=', 'account.move'),
+                            ('report_type', '=', 'qweb-pdf')
+                        )
+                    ],
+                    {'fields': ['id', 'report_name', 'name'], 'limit': 1}
                 )
 
                 if reports:
-                    report_id = reports[0]['id']
+                    report = reports[0]
+                    report_id = report['id']
+                    report_name = report['report_name']
 
-                    # Intentar obtener el HTML primero
-                    try:
-                        html_result = self.models.execute_kw(
-                            self.db, self.uid, self.password,
-                            'ir.actions.report', '_render_qweb_html',
-                            [report_id, [factura_id]]
-                        )
+                    print(f"Reporte manual encontrado - ID: {report_id}, Nombre: {report_name}")
 
-                        if html_result:
-                            print("HTML obtenido, pero necesitamos convertir a PDF...")
-                            # Aquí necesitaríamos wkhtmltopdf, pero no podemos acceder directamente
+                    # Construir URL de descarga directa
+                    base_url = self.url.rstrip('/')
+                    pdf_url = (
+                        f"{base_url}/web/content/{report_id}?model=ir.actions.report&field="
+                        f"&filename_field=&id={factura_id}&download=true"
+                    )
 
-                    except Exception as e:
-                        print(f"Error obteniendo HTML: {e}")
+                    return {
+                        'url': pdf_url,
+                        'report_id': report_id,
+                        'report_name': report_name,
+                        'method': 'manual_url'
+                    }
 
             except Exception as e:
-                print(f"Error método 4: {e}")
+                print(f"Error buscando reportes manualmente: {e}")
 
-            # Si llegamos aquí, ningún método funcionó
-            print("No se pudo generar el PDF con ningún método disponible en Odoo 15")
-            print("Verifica que:")
-            print("1. El módulo 'account' esté instalado")
-            print("2. Los reportes PDF estén configurados correctamente")
-            print("3. wkhtmltopdf esté instalado en el servidor Odoo")
+            # Método 3: URL genérica basada en convenciones de Odoo
+            try:
+                base_url = self.url.rstrip('/')
+
+                # URLs comunes para reportes de factura en Odoo 15
+                possible_urls = [
+                    f"{base_url}/report/pdf/account.report_invoice/{factura_id}",
+                    f"{base_url}/report/pdf/account.report_invoice_with_payments/{factura_id}",
+                    f"{base_url}/web/content?model=account.move&field=&id={factura_id}&filename_field=name&download=true"
+                ]
+
+                return {
+                    'possible_urls': possible_urls,
+                    'method': 'generic_urls',
+                    'recommendation': 'Prueba estas URLs en el navegador con las credenciales de Odoo'
+                }
+
+            except Exception as e:
+                print(f"Error construyendo URLs genéricas: {e}")
 
             return None
 
         except Exception as e:
             print(f"Error general obteniendo PDF de factura: {e}")
+            return None
+
+    def download_pdf_from_url(self, pdf_url):
+        """Descargar PDF usando la URL construida y las credenciales de sesión"""
+        try:
+            import requests
+            from requests.auth import HTTPBasicAuth
+
+            # Crear sesión con autenticación
+            session = requests.Session()
+
+            # En Odoo, a veces necesitas autenticarte primero
+            login_data = {
+                'db': self.db,
+                'login': self.username,
+                'password': self.password
+            }
+
+            login_url = f"{self.url.rstrip('/')}/web/login"
+
+            # Hacer login
+            response = session.post(login_url, data=login_data)
+
+            if response.status_code == 200:
+                # Ahora descargar el PDF
+                pdf_response = session.get(pdf_url)
+
+                if pdf_response.status_code == 200:
+                    return pdf_response.content
+                else:
+                    print(f"Error descargando PDF: {pdf_response.status_code}")
+                    return None
+            else:
+                print(f"Error en login: {response.status_code}")
+                return None
+
+        except ImportError:
+            print("Módulo 'requests' no disponible. Instala con: pip install requests")
+            return None
+        except Exception as e:
+            print(f"Error descargando PDF: {e}")
+            return None
+
+    def get_factura_pdf_complete(self, factura_id):
+        """Método completo que intenta obtener el PDF o devuelve información para descargarlo"""
+        try:
+            # Paso 1: Obtener información del reporte
+            pdf_info = self.get_factura_pdf(factura_id)
+
+            if not pdf_info:
+                return None
+
+            # Paso 2: Si tenemos una URL, intentar descargar
+            if isinstance(pdf_info, dict) and 'url' in pdf_info:
+                pdf_url = pdf_info['url']
+                print(f"Intentando descargar desde: {pdf_url}")
+
+                pdf_content = self.download_pdf_from_url(pdf_url)
+
+                if pdf_content:
+                    return pdf_content
+                else:
+                    # Si no podemos descargar automáticamente, devolver la info para descarga manual
+                    return {
+                        'status': 'manual_download_required',
+                        'message': 'No se pudo descargar automáticamente. Use la URL proporcionada.',
+                        'pdf_info': pdf_info
+                    }
+
+            return pdf_info
+
+        except Exception as e:
+            print(f"Error en get_factura_pdf_complete: {e}")
             return None
 
     def debug_available_methods(self):
