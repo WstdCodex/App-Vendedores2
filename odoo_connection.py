@@ -3,7 +3,6 @@ import xmlrpc.client
 from datetime import datetime, date
 from calendar import monthrange
 import json
-import base64
 
 class OdooConnection:
     def __init__(self, url, db, username, password):
@@ -763,28 +762,6 @@ class OdooConnection:
             print(f"Error obteniendo factura: {e}")
             return None
 
-
-    def descargar_factura_pdf(self, factura_id):
-        """Descargar el PDF de una factura usando el servicio XML-RPC de reportes.
-
-        Retorna el contenido del PDF como bytes o ``None`` si ocurre un error.
-        """
-        try:
-            report_service = xmlrpc.client.ServerProxy(
-                f"{self.url}/xmlrpc/2/report", allow_none=True
-            )
-            pdf_result = report_service.render_report(
-                self.db,
-                self.uid,
-                self.password,
-                'account.report_invoice_with_payments',
-                [factura_id],
-            )
-            if pdf_result and isinstance(pdf_result, (list, tuple)) and pdf_result[0]:
-                return base64.b64decode(pdf_result[0])
-        except Exception as e:
-            print(f"Error descargando PDF via reporte: {e}")
-        return None
 
 
     def get_factura_pdf(self, factura_id):
