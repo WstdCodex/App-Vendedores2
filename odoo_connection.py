@@ -760,39 +760,61 @@ class OdooConnection:
             ]
 
             for report_name in report_names:
+                pdf_result = None
+
+                # Desde Odoo 17 el método público ``render_qweb_pdf`` fue
+                # reemplazado por ``_render_qweb_pdf`` que se ejecuta sobre el
+                # registro del reporte. Primero intentamos con esta variante.
                 try:
-
-                    # Intentamos primero el método público ``render_qweb_pdf``
-                    # disponible en versiones recientes de Odoo para generar
-                    # un PDF a partir de un reporte.
-
-                    pdf_result = self.models.execute_kw(
+                    report_ids = self.models.execute_kw(
                         self.db,
                         self.uid,
                         self.password,
                         'ir.actions.report',
-
-                        'render_qweb_pdf',
-
-                        [report_name, [factura_id]],
+                        'search',
+                        [[['report_name', '=', report_name]]],
+                        {'limit': 1},
                     )
-                except Exception as e_render:
-                    print(f"Error con render_qweb_pdf {report_name}: {e_render}")
-                    try:
-                        # Como alternativa, intentamos el método ``get_pdf``
-                        # utilizado en versiones antiguas de Odoo.
+                    if report_ids:
                         pdf_result = self.models.execute_kw(
                             self.db,
                             self.uid,
                             self.password,
                             'ir.actions.report',
-                            'get_pdf',
-                            [[factura_id], report_name],
+                            '_render_qweb_pdf',
+                            [report_ids, [factura_id]],
                         )
-                    except Exception as e_get_pdf:
-                        print(f"Error con get_pdf {report_name}: {e_get_pdf}")
-                        continue
+                except Exception as e_render_new:
+                    print(f"Error con _render_qweb_pdf {report_name}: {e_render_new}")
 
+                if pdf_result is None:
+                    try:
+                        # Intento clásico para versiones 13-16 que aún
+                        # exponen ``render_qweb_pdf`` de forma pública.
+                        pdf_result = self.models.execute_kw(
+                            self.db,
+                            self.uid,
+                            self.password,
+                            'ir.actions.report',
+                            'render_qweb_pdf',
+                            [report_name, [factura_id]],
+                        )
+                    except Exception as e_render:
+                        print(f"Error con render_qweb_pdf {report_name}: {e_render}")
+                        try:
+                            # Último recurso para versiones muy antiguas que
+                            # utilizan ``get_pdf``.
+                            pdf_result = self.models.execute_kw(
+                                self.db,
+                                self.uid,
+                                self.password,
+                                'ir.actions.report',
+                                'get_pdf',
+                                [[factura_id], report_name],
+                            )
+                        except Exception as e_get_pdf:
+                            print(f"Error con get_pdf {report_name}: {e_get_pdf}")
+                            continue
 
                 # El resultado puede ser una tupla ``(pdf, formato)`` o un
                 # string codificado en base64. Normalizamos a bytes puros.
