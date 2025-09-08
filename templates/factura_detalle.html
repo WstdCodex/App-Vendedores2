@@ -19,9 +19,9 @@
                 <p class="mb-1"><strong>Cliente:</strong> {{ factura.cliente }}</p>
                 <p class="mb-1"><strong>Fecha:</strong> {{ factura.fecha }}</p>
                 <p class="mb-1"><strong>Total:</strong> ${{ factura.total|format_currency }}</p>
-                <a href="{{ url_for('descargar_factura_pdf', factura_id=factura.id) }}" class="btn btn-primary mt-3">
+                <button type="button" class="btn btn-primary mt-3" id="download-pdf">
                     <i class="fas fa-download me-2"></i>Descargar PDF
-                </a>
+                </button>
                 <button type="button" class="btn btn-secondary mt-3" id="share-button">
                     <i class="fas fa-share-alt me-2"></i>Compartir
                 </button>
@@ -92,6 +92,24 @@
 {% set pdf_url = url_for('descargar_factura_pdf', factura_id=factura.id, _external=True) %}
 <script>
 const pdfUrl = '{{ pdf_url }}';
+document.getElementById('download-pdf').addEventListener('click', async () => {
+    try {
+        const response = await fetch(pdfUrl, { credentials: 'include' });
+        if (!response.ok) throw new Error('No se pudo obtener el PDF');
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'factura_{{ factura.id }}.pdf';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    } catch (err) {
+        console.error(err);
+    }
+});
 document.getElementById('share-button').addEventListener('click', async () => {
     try {
         const response = await fetch(pdfUrl, { credentials: 'include' });

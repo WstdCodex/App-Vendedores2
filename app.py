@@ -186,7 +186,25 @@ def descargar_factura_pdf(factura_id):
             pdf_info = pdf_result.get('pdf_info', {})
             redirect_url = pdf_info.get('primary_url') or pdf_info.get('recommended_url')
             if redirect_url:
-                return redirect(redirect_url)
+                try:
+                    import requests
+                    r = requests.get(
+                        redirect_url,
+                        auth=requests.auth.HTTPBasicAuth(
+                            ODOO_CONFIG['report_user'],
+                            ODOO_CONFIG['report_password']
+                        ),
+                        timeout=30
+                    )
+                    if r.status_code == 200 and r.headers.get('content-type', '').startswith('application/pdf'):
+                        filename = pdf_result.get('factura_name', f'factura_{factura_id}')
+                        response = Response(r.content, mimetype='application/pdf')
+                        response.headers['Content-Disposition'] = (
+                            f'attachment; filename={filename}.pdf'
+                        )
+                        return response
+                except Exception as e:
+                    print(f"Error descargando PDF: {e}")
             instrucciones = ' '.join(pdf_result.get('instructions', []))
             flash(instrucciones or 'No se pudo descargar el PDF automáticamente.', 'warning')
 
