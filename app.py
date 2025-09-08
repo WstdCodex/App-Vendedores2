@@ -10,6 +10,17 @@ import os
 app = Flask(__name__)
 app.secret_key = 'tu_clave_secreta_aqui'  # Cambiar por una clave segura
 
+
+def format_currency(value):
+    """Format numbers with thousands separators and comma decimals."""
+    try:
+        return f"{value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    except (TypeError, ValueError):
+        return value
+
+
+app.jinja_env.filters['format_currency'] = format_currency
+
 # Configuración de Odoo - Ajustar según tu instalación
 ODOO_CONFIG = {
     'url': 'https://wstd.ar',  # URL de tu servidor Odoo

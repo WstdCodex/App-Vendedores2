@@ -25,17 +25,17 @@
                 <div class="mt-2">
                     <p class="mb-1">
                         <i class="fas fa-money-bill-wave me-2 text-danger"></i>
-                        Deuda total: ${{ '%.2f'|format(cliente.deuda_total) }}
+                        Deuda total: ${{ cliente.deuda_total|format_currency }}
                     </p>
                     {% if cliente.saldo_favor > 0 %}
                     <p class="mb-1">
                         <i class="fas fa-coins me-2 text-success"></i>
-                        Saldo a favor: ${{ '%.2f'|format(cliente.saldo_favor) }}
+                        Saldo a favor: ${{ cliente.saldo_favor|format_currency }}
                     </p>
                     {% endif %}
                     <p class="mb-1">
                         <i class="fas fa-shopping-cart me-2 text-info"></i>
-                        Gastó este mes: ${{ '%.2f'|format(total_mes) }}
+                        Gastó este mes: ${{ total_mes|format_currency }}
                     </p>
                     {% if cliente.email %}
                     <p class="mb-1">
@@ -112,8 +112,8 @@
                                         </a>
                                     </td>
                                     <td>{{ factura.fecha }}</td>
-                                    <td class="fw-semibold text-success">${{ "%.2f"|format(factura.total) }}</td>
-                                    <td class="fw-semibold text-warning">${{ "%.2f"|format(factura.pendiente) }}</td>
+                                    <td class="fw-semibold text-success">${{ factura.total|format_currency }}</td>
+                                    <td class="fw-semibold text-warning">${{ factura.pendiente|format_currency }}</td>
                                     <td><span class="badge bg-{{ factura.estado_color }}">{{ factura.estado_texto }}</span></td>
                                 </tr>
                                 {% endfor %}
@@ -175,8 +175,8 @@ function actualizarTablaFacturas(facturas) {
         <tr>
             <td class="fw-bold"><a href="/clientes/${CLIENTE_ID}/factura/${factura.id}" class="text-decoration-none">${factura.nombre}</a></td>
             <td>${factura.fecha}</td>
-            <td class="fw-semibold text-success">${factura.total.toFixed(2)}</td>
-            <td class="fw-semibold text-warning">${factura.pendiente.toFixed(2)}</td>
+            <td class="fw-semibold text-success">${factura.total.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td class="fw-semibold text-warning">${factura.pendiente.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             <td><span class="badge bg-${factura.estado_color}">${factura.estado_texto}</span></td>
         </tr>
     `).join('');
