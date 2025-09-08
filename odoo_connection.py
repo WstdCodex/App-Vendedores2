@@ -848,6 +848,7 @@ class OdooConnection:
         base_url = self.url.rstrip('/')
         return f"{base_url}/report/pdf/account.report_invoice_with_payments/{factura_id}?db={self.db}"
 
+
     def render_factura_pdf_rpc(self, factura_id, report_name=None, username=None, password=None):
         """Renderizar el PDF de una factura usando XML-RPC.
 
@@ -884,6 +885,7 @@ class OdooConnection:
         except Exception as e:
             print(f"Error renderizando PDF via RPC: {e}")
             return None
+
 
     def download_pdf_with_session(self, factura_id, username=None, password=None):
         """Descargar PDF usando sesión HTTP directa"""
