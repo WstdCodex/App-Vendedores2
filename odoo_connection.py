@@ -802,18 +802,21 @@ class OdooConnection:
                     except Exception as e_render:
                         print(f"Error con render_qweb_pdf {report_name}: {e_render}")
                         try:
-                            # Último recurso para versiones muy antiguas que
-                            # utilizan ``get_pdf``.
+                            # Último recurso: usar ``report_action`` que es el
+                            # método público disponible en las versiones
+                            # recientes de Odoo.
                             pdf_result = self.models.execute_kw(
                                 self.db,
                                 self.uid,
                                 self.password,
                                 'ir.actions.report',
-                                'get_pdf',
-                                [[factura_id], report_name],
+                                'report_action',
+                                [report_name, [factura_id]],
                             )
-                        except Exception as e_get_pdf:
-                            print(f"Error con get_pdf {report_name}: {e_get_pdf}")
+                        except Exception as e_report_action:
+                            print(
+                                f"Error con report_action {report_name}: {e_report_action}"
+                            )
                             continue
 
                 # El resultado puede ser una tupla ``(pdf, formato)`` o un
