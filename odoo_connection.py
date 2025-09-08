@@ -870,18 +870,37 @@ class OdooConnection:
 
             rep_name = report_name or 'account.report_invoice_with_payments'
 
-            result = self.models.execute_kw(
-                self.db, uid, login_pass,
-                'ir.actions.report', 'render_qweb_pdf',
-                [rep_name, [factura_id]]
-            )
+            try:
+                result = self.models.execute_kw(
+                    self.db, uid, login_pass,
+                    'ir.actions.report', 'render_qweb_pdf',
+                    [rep_name, [factura_id]]
+                )
 
-            if isinstance(result, (list, tuple)):
-                pdf_b64 = result[0]
-            else:
-                pdf_b64 = result
+                if isinstance(result, (list, tuple)):
+                    pdf_b64 = result[0]
+                else:
+                    pdf_b64 = result
 
-            return base64.b64decode(pdf_b64)
+                return base64.b64decode(pdf_b64)
+            except Exception:
+                # Odoo 16+ removed ``render_qweb_pdf``; fall back to ``get_pdf``
+                try:
+                    result = self.models.execute_kw(
+                        self.db, uid, login_pass,
+                        'ir.actions.report', 'get_pdf',
+                        [[factura_id], rep_name]
+                    )
+
+                    if isinstance(result, xmlrpc.client.Binary):
+                        return result.data
+                    if isinstance(result, bytes):
+                        return result
+                    if isinstance(result, str):
+                        return base64.b64decode(result)
+                except Exception as e2:
+                    print(f"Error renderizando PDF via RPC: {e2}")
+                    return None
         except Exception as e:
             print(f"Error renderizando PDF via RPC: {e}")
             return None
