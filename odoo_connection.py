@@ -2,9 +2,7 @@
 import xmlrpc.client
 from datetime import datetime, date
 from calendar import monthrange
-import base64
 import json
-import re
 
 class OdooConnection:
     def __init__(self, url, db, username, password):
@@ -800,9 +798,9 @@ class OdooConnection:
 
                     # Diferentes formatos de URL que pueden funcionar
                     possible_urls = [
-                        f"{base_url}/report/pdf/{report_name}/{factura_id}?db={self.db}",
-                        f"{base_url}/web/content?model=ir.actions.report&id={report_id}&filename={factura_id}.pdf&field=&download=true&data={factura_id}&db={self.db}",
-                        f"{base_url}/report/download/pdf/{report_id}/{factura_id}?db={self.db}"
+                        f"{base_url}/report/pdf/{report_name}/{factura_id}",
+                        f"{base_url}/web/content?model=ir.actions.report&id={report_id}&filename={factura_id}.pdf&field=&download=true&data={factura_id}",
+                        f"{base_url}/report/download/pdf/{report_id}/{factura_id}"
                     ]
 
                     return {
@@ -829,14 +827,14 @@ class OdooConnection:
             urls_by_report = {}
             for report_name in common_reports:
                 urls_by_report[report_name] = [
-                    f"{base_url}/report/pdf/{report_name}/{factura_id}?db={self.db}",
-                    f"{base_url}/report/html/{report_name}/{factura_id}?db={self.db}"
+                    f"{base_url}/report/pdf/{report_name}/{factura_id}",
+                    f"{base_url}/report/html/{report_name}/{factura_id}"
                 ]
 
             return {
                 'method': 'conventional_urls',
                 'urls_by_report': urls_by_report,
-                'recommended_url': f"{base_url}/report/pdf/account.report_invoice_with_payments/{factura_id}?db={self.db}"
+                'recommended_url': f"{base_url}/report/pdf/account.report_invoice_with_payments/{factura_id}"
             }
 
         except Exception as e:
@@ -846,92 +844,7 @@ class OdooConnection:
     def get_simple_pdf_url(self, factura_id):
         """Método simple que devuelve la URL más probable del PDF"""
         base_url = self.url.rstrip('/')
-        return f"{base_url}/report/pdf/account.report_invoice_with_payments/{factura_id}?db={self.db}"
-
-
-    def render_factura_pdf_rpc(self, factura_id, report_name=None, username=None, password=None):
-        """Renderizar el PDF de una factura usando XML-RPC.
-
-        Permite especificar credenciales alternativas (por ejemplo un usuario
-        con más permisos) y un nombre de reporte concreto. Devuelve el PDF en
-        bytes o ``None`` si ocurre un error.
-        """
-        try:
-            login_user = username or self.username
-            login_pass = password or self.password
-
-            # Obtener UID con las credenciales proporcionadas si son distintas
-            uid = self.uid
-            if username or password:
-                uid = self.common.authenticate(self.db, login_user, login_pass, {})
-                if not uid:
-                    print("No se pudo autenticar para renderizar PDF")
-                    return None
-
-            rep_name = report_name or 'account.report_invoice_with_payments'
-
-            try:
-                result = self.models.execute_kw(
-                    self.db, uid, login_pass,
-                    'ir.actions.report', 'render_qweb_pdf',
-                    [rep_name, [factura_id]]
-                )
-
-                if isinstance(result, (list, tuple)):
-                    pdf_b64 = result[0]
-                else:
-                    pdf_b64 = result
-
-                return base64.b64decode(pdf_b64)
-            except Exception:
-                # Odoo 16+ removed ``render_qweb_pdf``; try the newer
-                # ``_render_qweb_pdf`` API first and fall back to
-                # ``get_pdf`` for legacy versions.
-                try:
-                    report_ids = self.models.execute_kw(
-                        self.db, uid, login_pass,
-                        'ir.actions.report', 'search',
-                        [[('report_name', '=', rep_name)]],
-                        {'limit': 1}
-                    )
-                    if report_ids:
-                        result = self.models.execute_kw(
-                            self.db, uid, login_pass,
-                            'ir.actions.report', '_render_qweb_pdf',
-                            [[report_ids[0]], [factura_id]]
-                        )
-                        if isinstance(result, (list, tuple)):
-                            pdf_b64 = result[0]
-                        else:
-                            pdf_b64 = result
-
-                        if isinstance(pdf_b64, xmlrpc.client.Binary):
-                            return pdf_b64.data
-                        if isinstance(pdf_b64, bytes):
-                            return pdf_b64
-                        if isinstance(pdf_b64, str):
-                            return base64.b64decode(pdf_b64)
-                except Exception:
-                    try:
-                        result = self.models.execute_kw(
-                            self.db, uid, login_pass,
-                            'ir.actions.report', 'get_pdf',
-                            [[factura_id], rep_name]
-                        )
-
-                        if isinstance(result, xmlrpc.client.Binary):
-                            return result.data
-                        if isinstance(result, bytes):
-                            return result
-                        if isinstance(result, str):
-                            return base64.b64decode(result)
-                    except Exception as e2:
-                        print(f"Error renderizando PDF via RPC: {e2}")
-                        return None
-        except Exception as e:
-            print(f"Error renderizando PDF via RPC: {e}")
-            return None
-
+        return f"{base_url}/report/pdf/account.report_invoice_with_payments/{factura_id}"
 
     def download_pdf_with_session(self, factura_id, username=None, password=None):
         """Descargar PDF usando sesión HTTP directa"""
@@ -962,7 +875,7 @@ class OdooConnection:
             except Exception as e:
                 print(f"Error con autenticación básica: {e}")
 
-            # Método 2: Login web tradicional con CSRF
+            # Método 2: Login web tradicional
             try:
                 login_url = f"{base_url}/web/login"
                 login_data = {
@@ -971,21 +884,11 @@ class OdooConnection:
                     'db': self.db
                 }
 
-                # Obtener página de login para extraer el token CSRF
-                try:
-                    login_page = session.get(login_url)
-                    if login_page.status_code == 200:
-                        match = re.search(r'name="csrf_token" value="([^"]+)"', login_page.text)
-                        if match:
-                            login_data['csrf_token'] = match.group(1)
-                except Exception as e:
-                    print(f"No se pudo obtener csrf_token: {e}")
-
-                # Hacer POST al login con el token (si se obtuvo)
+                # Hacer POST al login
                 login_response = session.post(login_url, data=login_data, allow_redirects=True)
 
-                if login_response.status_code in (200, 302):
-                    # Verificar si el login fue exitoso
+                if login_response.status_code == 200:
+                    # Verificar si el login fue exitoso (no hay forma perfecta, pero podemos intentar)
                     if 'web/login' not in login_response.url:
                         # Login exitoso, ahora descargar PDF
                         pdf_url = self.get_simple_pdf_url(factura_id)
@@ -1021,17 +924,10 @@ class OdooConnection:
             print(f"Error descargando PDF con sesión: {e}")
             return None
 
-    def get_factura_pdf_info(self, factura_id, username=None, password=None):
-        """Obtener información completa para descargar PDF.
 
-        Parameters
-        ----------
-        factura_id: int
-            ID de la factura a descargar.
-        username, password: str, optional
-            Credenciales alternativas para la descarga del PDF. Si no se
-            proporcionan se usarán las de la conexión actual.
-        """
+
+    def get_factura_pdf_info(self, factura_id):
+        """Obtener información completa para descargar PDF"""
         try:
             # Verificar que la factura existe
             factura = self.models.execute_kw(
@@ -1047,41 +943,14 @@ class OdooConnection:
             if factura_data.get('move_type') != 'out_invoice':
                 return {'error': 'El documento no es una factura de venta'}
 
-            # Obtener URLs posibles y nombre de reporte
+            # Obtener URLs posibles
             pdf_info = self.get_factura_pdf(factura_id)
-
-            report_name = None
-            if pdf_info:
-                report_name = pdf_info.get('report_name')
-            else:
-                print('No se pudo determinar el reporte, usando nombre por defecto')
-
-            # Intentar primero renderizar el PDF vía RPC
-            pdf_content = self.render_factura_pdf_rpc(
-                factura_id,
-                report_name=report_name,
-                username=username,
-                password=password
-            )
-
-            if pdf_content:
-                return {
-                    'factura_id': factura_id,
-                    'factura_name': factura_data.get('name'),
-                    'factura_state': factura_data.get('state'),
-                    'pdf_info': pdf_info,
-                    'download_attempted': True,
-                    'pdf_content': pdf_content,
-                    'status': 'success'
-                }
 
             if not pdf_info:
                 return {'error': 'No se pudo obtener información del reporte'}
 
-            # Intentar descarga automática con posibles credenciales alternativas
-            pdf_content = self.download_pdf_with_session(
-                factura_id, username=username, password=password
-            )
+            # Intentar descarga automática
+            pdf_content = self.download_pdf_with_session(factura_id)
 
             result = {
                 'factura_id': factura_id,
