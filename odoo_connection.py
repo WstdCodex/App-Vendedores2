@@ -770,20 +770,18 @@ class OdooConnection:
         Retorna el contenido del PDF como bytes o ``None`` si ocurre un error.
         """
         try:
-            pdf_result = self.models.execute_kw(
+            report_service = xmlrpc.client.ServerProxy(
+                f"{self.url}/xmlrpc/2/report", allow_none=True
+            )
+            pdf_result = report_service.render_report(
                 self.db,
                 self.uid,
                 self.password,
-                'ir.actions.report',
-                'render_qweb_pdf',
-                ['account.report_invoice_with_payments', [factura_id]],
+                'account.report_invoice_with_payments',
+                [factura_id],
             )
-
             if pdf_result and isinstance(pdf_result, (list, tuple)) and pdf_result[0]:
-                pdf_content = pdf_result[0]
-                if isinstance(pdf_content, str):
-                    return base64.b64decode(pdf_content)
-                return pdf_content
+                return base64.b64decode(pdf_result[0])
         except Exception as e:
             print(f"Error descargando PDF via reporte: {e}")
         return None
