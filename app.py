@@ -25,6 +25,9 @@ app.jinja_env.filters['format_currency'] = format_currency
 ODOO_CONFIG = {
     'url': 'https://wstd.ar',  # URL de tu servidor Odoo
     'db': 'odoo',  # Nombre de tu base de datos Odoo
+    # Credenciales usadas para descargar/compartir PDFs de facturas
+    'report_user': 'lucas@wstandar.com.ar',
+    'report_password': 'lks.1822.95',
 }
 
 @app.route('/')
@@ -164,7 +167,11 @@ def descargar_factura_pdf(factura_id):
                               session['username'], session['password'])
         odoo.uid = session['user_id']
 
-        pdf_result = odoo.get_factura_pdf_info(factura_id)
+        pdf_result = odoo.get_factura_pdf_info(
+            factura_id,
+            username=ODOO_CONFIG['report_user'],
+            password=ODOO_CONFIG['report_password']
+        )
         if pdf_result and pdf_result.get('status') == 'success':
             pdf_content = pdf_result.get('pdf_content')
             if pdf_content:
