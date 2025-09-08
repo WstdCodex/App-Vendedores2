@@ -848,39 +848,9 @@ class OdooConnection:
         base_url = self.url.rstrip('/')
         return f"{base_url}/report/pdf/account.report_invoice_with_payments/{factura_id}"
 
-
     def download_pdf_with_session(self, factura_id, username=None, password=None):
-        """Descargar PDF intentando primero vía RPC y luego con sesión HTTP"""
+        """Descargar PDF usando sesión HTTP directa"""
         try:
-            # Primer intento: usar XML-RPC para obtener el PDF directamente
-            try:
-                rpc_user = username or self.username
-                rpc_pass = password or self.password
-                rpc_uid = self.common.authenticate(self.db, rpc_user, rpc_pass, {})
-                if rpc_uid:
-                    report_ids = self.models.execute_kw(
-                        self.db,
-                        rpc_uid,
-                        rpc_pass,
-                        'ir.actions.report',
-                        'search',
-                        [[('report_name', '=', 'account.report_invoice_with_payments')]],
-                        {'limit': 1}
-                    )
-                    if report_ids:
-                        pdf_binary = self.models.execute_kw(
-                            self.db,
-                            rpc_uid,
-                            rpc_pass,
-                            'ir.actions.report',
-                            'render_qweb_pdf',
-                            [report_ids[0], [factura_id]]
-                        )
-                        if pdf_binary and pdf_binary[0]:
-                            return base64.b64decode(pdf_binary[0])
-            except Exception as e:
-                print(f"Error descargando PDF vía RPC: {e}")
-
             import requests
 
             # Usar credenciales de la conexión si no se proporcionan otras
@@ -902,7 +872,7 @@ class OdooConnection:
                 if response.status_code == 200 and response.headers.get('content-type', '').startswith('application/pdf'):
                     return response.content
                 else:
-                    print(f"Auth básica no devolvió PDF (status: {response.status_code})")
+                    print(f"Error con auth básica: {response.status_code}")
 
             except Exception as e:
                 print(f"Error con autenticación básica: {e}")
