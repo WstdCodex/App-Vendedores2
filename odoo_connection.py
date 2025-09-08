@@ -1048,3 +1048,70 @@ class OdooConnection:
 
         except Exception as e:
             print(f"Error general: {e}")
+
+    def get_pdf_download_url(self, factura_id):
+        """Generar URL para descarga directa del PDF de factura"""
+        try:
+            # Verificar que la factura existe
+            factura = self.models.execute_kw(
+                self.db, self.uid, self.password,
+                'account.move', 'read',
+                [factura_id], {'fields': ['name', 'state']}
+            )
+
+            if not factura:
+                return None
+
+            factura_name = factura[0].get('name', f'factura_{factura_id}')
+            base_url = self.url.rstrip('/')
+
+            # URL más directa para Odoo 15
+            # Esta URL debería funcionar si el usuario está autenticado en el navegador
+            pdf_url = f"{base_url}/report/pdf/account.report_invoice_with_payments/{factura_id}"
+
+            return {
+                'url': pdf_url,
+                'factura_name': factura_name,
+                'instructions': [
+                    '1. Copia esta URL en tu navegador',
+                    '2. Asegúrate de estar logueado en Odoo',
+                    '3. El PDF se descargará automáticamente'
+                ]
+            }
+
+        except Exception as e:
+            print(f"Error generando URL de descarga: {e}")
+            return None
+
+    def get_report_action_info(self, factura_id):
+        """Obtener información completa de la acción de reporte"""
+        try:
+            # Obtener la acción de impresión
+            action = self.models.execute_kw(
+                self.db, self.uid, self.password,
+                'account.move', 'action_invoice_print',
+                [[factura_id]]
+            )
+
+            if not action:
+                return None
+
+            print("=== INFORMACIÓN DE LA ACCIÓN ===")
+            print(f"Tipo: {action.get('type')}")
+            print(f"ID del reporte: {action.get('id')}")
+            print(f"Nombre del reporte: {action.get('report_name')}")
+            print(f"Nombre mostrado: {action.get('name')}")
+            print(f"Contexto: {action.get('context')}")
+            print("=" * 35)
+
+            return action
+
+        except Exception as e:
+            print(f"Error obteniendo información de acción: {e}")
+            return None
+
+    # Método simplificado para usar inmediatamente
+    def get_simple_pdf_url(self, factura_id):
+        """Método simple que devuelve la URL del PDF"""
+        base_url = self.url.rstrip('/')
+        return f"{base_url}/report/pdf/account.report_invoice_with_payments/{factura_id}"
