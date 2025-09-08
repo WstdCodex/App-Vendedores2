@@ -176,6 +176,10 @@ def descargar_factura_pdf(factura_id):
                 return response
 
         if pdf_result and pdf_result.get('status') == 'manual_download_required':
+            pdf_info = pdf_result.get('pdf_info', {})
+            redirect_url = pdf_info.get('primary_url') or pdf_info.get('recommended_url')
+            if redirect_url:
+                return redirect(redirect_url)
             instrucciones = ' '.join(pdf_result.get('instructions', []))
             flash(instrucciones or 'No se pudo descargar el PDF automáticamente.', 'warning')
 
