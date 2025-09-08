@@ -880,7 +880,7 @@ class OdooConnection:
             }
 
             session.post(f"{base_url}/web/login", data=login_payload, timeout=30)
-            pdf_url = f"{base_url}/report/pdf/account.report_invoice/{factura_id}"
+            pdf_url = self.get_simple_pdf_url(factura_id)
             response = session.get(pdf_url, timeout=30)
 
             if response.status_code == 200 and response.headers.get('content-type', '').startswith('application/pdf'):
