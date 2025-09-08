@@ -36,6 +36,30 @@ class OdooConnection:
             print(f"Error de autenticación: {e}")
             return None
 
+    def has_group(self, group_xml_id: str) -> bool:
+        """Verificar si el usuario autenticado pertenece a un grupo específico.
+
+        Parameters
+        ----------
+        group_xml_id: str
+            Identificador XML del grupo, por ejemplo
+            ``'sales_team.group_sale_manager'``.
+
+        Returns
+        -------
+        bool
+            ``True`` si el usuario pertenece al grupo, ``False`` en caso
+            contrario o si ocurre un error.
+        """
+        try:
+            return self.models.execute_kw(
+                self.db, self.uid, self.password,
+                'res.users', 'has_group', [group_xml_id]
+            )
+        except Exception as e:
+            print(f"Error comprobando grupo {group_xml_id}: {e}")
+            return False
+
     def get_estado_color(self, estado):
         """Obtener color según el estado de pago"""
         if estado == 'paid':
@@ -86,18 +110,23 @@ class OdooConnection:
         return ''
 
     def get_total_gastos_mes(self, user_id, year, month):
-        """Obtener el total facturado por un vendedor en un mes específico."""
+        """Obtener el total facturado en un mes específico.
+
+        Si ``user_id`` es ``None`` se calcula el total de todos los
+        vendedores; en caso contrario solo del vendedor indicado.
+        """
         try:
             start_date = datetime(year, month, 1).strftime('%Y-%m-%d')
             end_day = monthrange(year, month)[1]
             end_date = datetime(year, month, end_day).strftime('%Y-%m-%d')
             domain = [
                 ('move_type', '=', 'out_invoice'),
-                ('invoice_user_id', '=', user_id),
                 ('state', '!=', 'draft'),
                 ('invoice_date', '>=', start_date),
                 ('invoice_date', '<=', end_date),
             ]
+            if user_id is not None:
+                domain.append(('invoice_user_id', '=', user_id))
             facturas_ids = self.models.execute_kw(
                 self.db, self.uid, self.password,
                 'account.move', 'search', [domain]
@@ -310,23 +339,20 @@ class OdooConnection:
     def buscar_clientes(self, nombre_cliente: str = '', user_id: int = None,
                          limit: int = 20, provincia_id: int = None,
                          ciudad: str = ''):
-        """Buscar clientes en Odoo asignados a un vendedor específico.
+        """Buscar clientes en Odoo, opcionalmente filtrados por vendedor.
 
-        IMPORTANTE: El ``user_id`` debe ser proporcionado obligatoriamente para
-        filtrar solo los clientes asignados al comercial específico. Además
-        permite filtrar por provincia (``state_id``) y ciudad.
+        Cuando ``user_id`` es ``None`` se devuelven todos los clientes
+        disponibles; en caso contrario solo aquellos asignados al vendedor
+        especificado. Además permite filtrar por provincia (``state_id``) y
+        ciudad.
         """
         try:
-            # Validación: user_id es obligatorio
-            if user_id is None:
-                print("Error: user_id es obligatorio para buscar clientes")
-                return []
-
             domain = [
                 ('customer_rank', '>', 0),
                 ('parent_id', '=', False),
-                ('user_id', '=', user_id)  # FILTRO CRÍTICO: Solo clientes de este vendedor
             ]
+            if user_id is not None:
+                domain.append(('user_id', '=', user_id))
 
             if nombre_cliente:
                 domain.append(('name', 'ilike', nombre_cliente))
@@ -364,9 +390,9 @@ class OdooConnection:
                 cliente_user_id = c.get('user_id')
                 if cliente_user_id:
                     cliente_user_id = cliente_user_id[0] if isinstance(cliente_user_id, list) else cliente_user_id
-                
-                # Si el cliente no tiene el vendedor correcto, lo saltamos
-                if cliente_user_id != user_id:
+
+                # Si se solicita filtrar por vendedor y no coincide, lo saltamos
+                if user_id is not None and cliente_user_id != user_id:
                     print(f"Cliente {c.get('name')} tiene vendedor {cliente_user_id}, esperado {user_id}")
                     continue
 
