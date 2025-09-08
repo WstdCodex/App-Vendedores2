@@ -167,11 +167,7 @@ def descargar_factura_pdf(factura_id):
                               session['username'], session['password'])
         odoo.uid = session['user_id']
 
-        pdf_result = odoo.get_factura_pdf_info(
-            factura_id,
-            username=ODOO_CONFIG['report_user'],
-            password=ODOO_CONFIG['report_password']
-        )
+        pdf_result = odoo.get_factura_pdf_info(factura_id)
         if pdf_result and pdf_result.get('status') == 'success':
             pdf_content = pdf_result.get('pdf_content')
             if pdf_content:
