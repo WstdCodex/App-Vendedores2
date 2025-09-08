@@ -166,50 +166,26 @@ def descargar_factura_pdf(factura_id):
         odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
                               session['username'], session['password'])
         odoo.uid = session['user_id']
-
-        pdf_result = odoo.get_factura_pdf_info(factura_id)
-        if pdf_result and pdf_result.get('status') == 'success':
-            pdf_content = pdf_result.get('pdf_content')
-            if pdf_content:
-                filename = pdf_result.get('factura_name', f'factura_{factura_id}')
-                response = Response(pdf_content, mimetype='application/pdf')
-                response.headers['Content-Disposition'] = (
-                    f'attachment; filename={filename}.pdf'
-                )
-                return response
-
-        if pdf_result and pdf_result.get('status') == 'manual_download_required':
-            pdf_info = pdf_result.get('pdf_info', {})
-            redirect_url = pdf_info.get('primary_url') or pdf_info.get('recommended_url')
-            if redirect_url:
-                try:
-                    import requests
-                    r = requests.get(
-                        redirect_url,
-                        auth=requests.auth.HTTPBasicAuth(
-                            ODOO_CONFIG['report_user'],
-                            ODOO_CONFIG['report_password']
-                        ),
-                        timeout=30
-                    )
-                    if r.status_code == 200 and r.headers.get('content-type', '').startswith('application/pdf'):
-                        filename = pdf_result.get('factura_name', f'factura_{factura_id}')
-                        response = Response(r.content, mimetype='application/pdf')
-                        response.headers['Content-Disposition'] = (
-                            f'attachment; filename={filename}.pdf'
-                        )
-                        return response
-                except Exception as e:
-                    print(f"Error descargando PDF: {e}")
-            instrucciones = ' '.join(pdf_result.get('instructions', []))
-            flash(instrucciones or 'No se pudo descargar el PDF automáticamente.', 'warning')
-
-        # Si no se pudo obtener el PDF desde Odoo, generamos uno simple.
         factura = odoo.get_factura(factura_id)
+        filename = factura.get('nombre', f'factura_{factura_id}') if factura else f'factura_{factura_id}'
+
+        pdf_content = odoo.download_invoice_pdf(
+            factura_id,
+            username=ODOO_CONFIG['report_user'],
+            password=ODOO_CONFIG['report_password']
+        )
+        if pdf_content:
+            response = Response(pdf_content, mimetype='application/pdf')
+            response.headers['Content-Disposition'] = (
+                f'attachment; filename={filename}.pdf'
+            )
+            return response
+
         if not factura:
             flash('No se pudo obtener la información de la factura', 'error')
             return redirect(request.referrer or url_for('dashboard'))
 
+        # Si no se pudo obtener el PDF desde Odoo, generamos uno simple.
         buffer = BytesIO()
         p = canvas.Canvas(buffer, pagesize=letter)
         width, height = letter

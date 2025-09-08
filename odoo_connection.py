@@ -846,6 +846,51 @@ class OdooConnection:
         base_url = self.url.rstrip('/')
         return f"{base_url}/report/pdf/account.report_invoice_with_payments/{factura_id}"
 
+    def download_invoice_pdf(self, factura_id, username=None, password=None):
+        """Descargar el PDF de una factura directamente desde Odoo.
+
+        Parameters
+        ----------
+        factura_id: int
+            Identificador de la factura en Odoo.
+        username: str, optional
+            Usuario para autenticarse en Odoo. Si no se proporciona se
+            usarán las credenciales de la instancia.
+        password: str, optional
+            Contraseña para autenticarse en Odoo.
+
+        Returns
+        -------
+        bytes or None
+            Contenido del PDF si la descarga fue exitosa, en caso
+            contrario ``None``.
+        """
+        try:
+            import requests
+
+            login_user = username or self.username
+            login_pass = password or self.password
+            base_url = self.url.rstrip('/')
+
+            session = requests.Session()
+            login_payload = {
+                'login': login_user,
+                'password': login_pass,
+                'db': self.db,
+            }
+
+            session.post(f"{base_url}/web/login", data=login_payload, timeout=30)
+            pdf_url = f"{base_url}/report/pdf/account.report_invoice/{factura_id}"
+            response = session.get(pdf_url, timeout=30)
+
+            if response.status_code == 200 and response.headers.get('content-type', '').startswith('application/pdf'):
+                return response.content
+
+        except Exception as e:
+            print(f"Error descargando PDF directo: {e}")
+
+        return None
+
     def download_pdf_with_session(self, factura_id, username=None, password=None):
         """Descargar PDF usando sesión HTTP directa"""
         try:
