@@ -866,6 +866,7 @@ class OdooConnection:
             contrario ``None``.
         """
         try:
+            import re
             import requests
 
             login_user = username or self.username
@@ -873,17 +874,28 @@ class OdooConnection:
             base_url = self.url.rstrip('/')
 
             session = requests.Session()
+
+            # Obtener el token CSRF desde la página de login
+            login_page = session.get(f"{base_url}/web/login", timeout=30)
+            csrf_token = None
+            match = re.search(r'name="csrf_token" value="(.+?)"', login_page.text)
+            if match:
+                csrf_token = match.group(1)
+
             login_payload = {
                 'login': login_user,
                 'password': login_pass,
                 'db': self.db,
             }
+            if csrf_token:
+                login_payload['csrf_token'] = csrf_token
 
             session.post(f"{base_url}/web/login", data=login_payload, timeout=30)
             pdf_url = self.get_simple_pdf_url(factura_id)
             response = session.get(pdf_url, timeout=30)
 
-            if response.status_code == 200 and response.headers.get('content-type', '').startswith('application/pdf'):
+            if (response.status_code == 200 and
+                    response.headers.get('content-type', '').startswith('application/pdf')):
                 return response.content
 
         except Exception as e:
