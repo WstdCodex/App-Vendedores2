@@ -13,9 +13,13 @@ class OdooConnection:
         self.password = password
         self.uid = None
 
-        # Conexiones XML-RPC
-        self.common = xmlrpc.client.ServerProxy(f'{url}/xmlrpc/2/common')
-        self.models = xmlrpc.client.ServerProxy(f'{url}/xmlrpc/2/object')
+        # Conexiones XML-RPC con allow_none para soportar valores None
+        self.common = xmlrpc.client.ServerProxy(
+            f'{url}/xmlrpc/2/common', allow_none=True
+        )
+        self.models = xmlrpc.client.ServerProxy(
+            f'{url}/xmlrpc/2/object', allow_none=True
+        )
 
     def authenticate(self):
         """Autenticar usuario en Odoo"""
@@ -751,367 +755,222 @@ class OdooConnection:
             return None
 
 
+
     def get_factura_pdf(self, factura_id):
-        """Obtener el PDF de una factura - Solo métodos públicos para Odoo 15"""
+        """Obtener el PDF de una factura - Versión robusta para Odoo 15"""
         try:
-            # Método 1: Usar la acción de impresión de la factura y extraer la URL
-            try:
-                action_result = self.models.execute_kw(
-                    self.db, self.uid, self.password,
-                    'account.move', 'action_invoice_print',
-                    [[factura_id]]
-                )
+            # Evitar action_invoice_print que está causando problemas
+            # Buscar directamente el reporte de facturas
 
-                if isinstance(action_result, dict) and action_result.get('type') == 'ir.actions.report':
-                    report_id = action_result.get('id')
-                    report_name = action_result.get('report_name', '')
-
-                    print(f"Reporte encontrado - ID: {report_id}, Nombre: {report_name}")
-
-                    # Intentar con el método público 'sudo' que puede darnos acceso
-                    if report_id:
-                        try:
-                            # Obtener el reporte usando browse (método público)
-                            report_obj = self.models.execute_kw(
-                                self.db, self.uid, self.password,
-                                'ir.actions.report', 'browse',
-                                [[report_id]]
-                            )
-
-                            if report_obj:
-                                print(f"Objeto reporte obtenido: {type(report_obj)}")
-
-                                # Como no podemos usar métodos privados, vamos a construir la URL
-                                # y sugerir descarga directa
-                                base_url = self.url.rstrip('/')
-                                pdf_url = (
-                                    f"{base_url}/web/content/{report_id}?model=ir.actions.report&field="
-                                    f"&filename_field=&id={factura_id}&download=true"
-                                )
-
-                                print(f"URL para descargar PDF: {pdf_url}")
-                                return {
-                                    'url': pdf_url,
-                                    'report_id': report_id,
-                                    'report_name': report_name,
-                                    'method': 'download_url'
-                                }
-
-                        except Exception as e:
-                            print(f"Error con browse: {e}")
-
-            except Exception as e:
-                print(f"Error con action_invoice_print: {e}")
-
-            # Método 2: Buscar reporte manualmente y construir URL
+            # Método 1: Buscar reportes específicos de facturas
             try:
                 reports = self.models.execute_kw(
                     self.db, self.uid, self.password,
                     'ir.actions.report', 'search_read',
-                    [
-                        (
-                            ('model', '=', 'account.move'),
-                            ('report_type', '=', 'qweb-pdf')
-                        )
-                    ],
-                    {'fields': ['id', 'report_name', 'name'], 'limit': 1}
+                    [[
+                        ('model', '=', 'account.move'),
+                        ('report_type', '=', 'qweb-pdf')
+                    ]],
+                    {
+                        'fields': ['id', 'report_name', 'name', 'print_report_name'],
+                        'order': 'id asc'
+                    }
                 )
 
                 if reports:
+                    # Usar el primer reporte encontrado
                     report = reports[0]
                     report_id = report['id']
                     report_name = report['report_name']
 
-                    print(f"Reporte manual encontrado - ID: {report_id}, Nombre: {report_name}")
+                    print(f"Usando reporte - ID: {report_id}, Nombre: {report_name}")
 
-                    # Construir URL de descarga directa
+                    # Construir URL simple y directa
                     base_url = self.url.rstrip('/')
-                    pdf_url = (
-                        f"{base_url}/web/content/{report_id}?model=ir.actions.report&field="
-                        f"&filename_field=&id={factura_id}&download=true"
-                    )
+
+                    # Diferentes formatos de URL que pueden funcionar
+                    possible_urls = [
+                        f"{base_url}/report/pdf/{report_name}/{factura_id}",
+                        f"{base_url}/web/content?model=ir.actions.report&id={report_id}&filename={factura_id}.pdf&field=&download=true&data={factura_id}",
+                        f"{base_url}/report/download/pdf/{report_id}/{factura_id}"
+                    ]
 
                     return {
-                        'url': pdf_url,
                         'report_id': report_id,
                         'report_name': report_name,
-                        'method': 'manual_url'
+                        'urls': possible_urls,
+                        'primary_url': possible_urls[0],
+                        'method': 'direct_search'
                     }
 
             except Exception as e:
-                print(f"Error buscando reportes manualmente: {e}")
+                print(f"Error buscando reportes: {e}")
 
-            # Método 3: URL genérica basada en convenciones de Odoo
-            try:
-                base_url = self.url.rstrip('/')
+            # Método 2: URLs basadas en convenciones conocidas de Odoo 15
+            base_url = self.url.rstrip('/')
 
-                # URLs comunes para reportes de factura en Odoo 15
-                possible_urls = [
-                    f"{base_url}/report/pdf/account.report_invoice/{factura_id}",
-                    f"{base_url}/report/pdf/account.report_invoice_with_payments/{factura_id}",
-                    f"{base_url}/web/content?model=account.move&field=&id={factura_id}&filename_field=name&download=true"
-                ]
-
-                return {
-                    'possible_urls': possible_urls,
-                    'method': 'generic_urls',
-                    'recommendation': 'Prueba estas URLs en el navegador con las credenciales de Odoo'
-                }
-
-            except Exception as e:
-                print(f"Error construyendo URLs genéricas: {e}")
-
-            return None
-
-        except Exception as e:
-            print(f"Error general obteniendo PDF de factura: {e}")
-            return None
-
-    def download_pdf_from_url(self, pdf_url):
-        """Descargar PDF usando la URL construida y las credenciales de sesión"""
-        try:
-            import requests
-            from requests.auth import HTTPBasicAuth
-
-            # Crear sesión con autenticación
-            session = requests.Session()
-
-            # En Odoo, a veces necesitas autenticarte primero
-            login_data = {
-                'db': self.db,
-                'login': self.username,
-                'password': self.password
-            }
-
-            login_url = f"{self.url.rstrip('/')}/web/login"
-
-            # Hacer login
-            response = session.post(login_url, data=login_data)
-
-            if response.status_code == 200:
-                # Ahora descargar el PDF
-                pdf_response = session.get(pdf_url)
-
-                if pdf_response.status_code == 200:
-                    return pdf_response.content
-                else:
-                    print(f"Error descargando PDF: {pdf_response.status_code}")
-                    return None
-            else:
-                print(f"Error en login: {response.status_code}")
-                return None
-
-        except ImportError:
-            print("Módulo 'requests' no disponible. Instala con: pip install requests")
-            return None
-        except Exception as e:
-            print(f"Error descargando PDF: {e}")
-            return None
-
-    def get_factura_pdf_complete(self, factura_id):
-        """Método completo que intenta obtener el PDF o devuelve información para descargarlo"""
-        try:
-            # Paso 1: Obtener información del reporte
-            pdf_info = self.get_factura_pdf(factura_id)
-
-            if not pdf_info:
-                return None
-
-            # Paso 2: Si tenemos una URL, intentar descargar
-            if isinstance(pdf_info, dict) and 'url' in pdf_info:
-                pdf_url = pdf_info['url']
-                print(f"Intentando descargar desde: {pdf_url}")
-
-                pdf_content = self.download_pdf_from_url(pdf_url)
-
-                if pdf_content:
-                    return pdf_content
-                else:
-                    # Si no podemos descargar automáticamente, devolver la info para descarga manual
-                    return {
-                        'status': 'manual_download_required',
-                        'message': 'No se pudo descargar automáticamente. Use la URL proporcionada.',
-                        'pdf_info': pdf_info
-                    }
-
-            return pdf_info
-
-        except Exception as e:
-            print(f"Error en get_factura_pdf_complete: {e}")
-            return None
-
-    def debug_available_methods(self):
-        """Método para debuggear qué métodos están disponibles en ir.actions.report"""
-        methods_to_test = [
-            '_generate_pdf',
-            '_render_template',
-            '_render_qweb_html',
-            '_render_qweb_pdf',
-            'render_qweb_pdf',
-            '_render',
-            'sudo'
-        ]
-
-        print("Métodos disponibles en ir.actions.report:")
-        for method in methods_to_test:
-            try:
-                # Solo intentar llamar métodos que no requieren parámetros específicos
-                if method == 'sudo':
-                    result = self.models.execute_kw(
-                        self.db, self.uid, self.password,
-                        'ir.actions.report', 'sudo', []
-                    )
-                    print(f"✓ {method} - disponible")
-                else:
-                    # Para otros métodos, solo verificamos si existen sin ejecutarlos completamente
-                    print(f"? {method} - verificando...")
-            except Exception as e:
-                if "has no attribute" in str(e):
-                    print(f"✗ {method} - NO disponible")
-                else:
-                    print(f"✓ {method} - disponible pero falló en ejecución: {str(e)[:50]}...")
-
-    def debug_invoice_reports(self):
-        """Debuggear reportes específicos de facturas"""
-        try:
-            reports = self.models.execute_kw(
-                self.db, self.uid, self.password,
-                'ir.actions.report', 'search_read',
-                [[('model', '=', 'account.move')]],
-                {'fields': ['id', 'name', 'report_name', 'report_type', 'print_report_name']}
-            )
-
-            print(f"\nReportes disponibles para account.move ({len(reports)} encontrados):")
-            for report in reports:
-                print(f"ID: {report.get('id')}")
-                print(f"  Nombre: {report.get('name')}")
-                print(f"  Report Name: {report.get('report_name')}")
-                print(f"  Tipo: {report.get('report_type')}")
-                print(f"  Print Name: {report.get('print_report_name')}")
-                print("  ---")
-
-        except Exception as e:
-            print(f"Error obteniendo reportes: {e}")
-
-    def debug_available_reports(self):
-        """Método para debuggear qué reportes están disponibles para account.move"""
-        try:
-            # Buscar todos los reportes para account.move
-            reports = self.models.execute_kw(
-                self.db, self.uid, self.password,
-                'ir.actions.report', 'search_read',
-                [[('model', '=', 'account.move')]],
-                {'fields': ['name', 'report_name', 'report_type']}
-            )
-
-            print("Reportes disponibles para account.move:")
-            for report in reports:
-                print(f"  - Nombre: {report.get('name')}")
-                print(f"    Report Name: {report.get('report_name')}")
-                print(f"    Tipo: {report.get('report_type')}")
-                print("  ---")
-
-            return reports
-
-        except Exception as e:
-            print(f"Error obteniendo reportes: {e}")
-            return []
-
-    # También puedes verificar qué métodos están disponibles en ir.actions.report
-    def debug_report_methods(self):
-        """Verificar métodos disponibles en ir.actions.report"""
-        try:
-            # Esto no funcionará directamente via XML-RPC, pero puedes intentar
-            # algunos métodos conocidos para ver cuáles existen
-            methods_to_test = [
-                '_render_qweb_pdf',
-                'render_qweb_pdf',
-                '_render',
-                'generate_report',
-                '_get_report_from_name'
+            # Reportes comunes en Odoo 15
+            common_reports = [
+                'account.report_invoice_with_payments',
+                'account.report_invoice',
+                'account.account_invoices'
             ]
 
-            for method in methods_to_test:
-                try:
-                    # Intentar obtener información del método (esto podría fallar)
-                    result = self.models.execute_kw(
-                        self.db, self.uid, self.password,
-                        'ir.actions.report', method,
-                        ['account.report_invoice_with_payments', [1]]  # IDs de prueba
-                    )
-                    print(f"Método {method} existe y devolvió: {type(result)}")
-                except Exception as e:
-                    if "has no attribute" in str(e):
-                        print(f"Método {method} NO existe")
-                    else:
-                        print(f"Método {method} existe pero falló: {str(e)[:100]}...")
+            urls_by_report = {}
+            for report_name in common_reports:
+                urls_by_report[report_name] = [
+                    f"{base_url}/report/pdf/{report_name}/{factura_id}",
+                    f"{base_url}/report/html/{report_name}/{factura_id}"
+                ]
+
+            return {
+                'method': 'conventional_urls',
+                'urls_by_report': urls_by_report,
+                'recommended_url': f"{base_url}/report/pdf/account.report_invoice_with_payments/{factura_id}"
+            }
 
         except Exception as e:
-            print(f"Error general: {e}")
+            print(f"Error general obteniendo PDF: {e}")
+            return None
 
-    def get_pdf_download_url(self, factura_id):
-        """Generar URL para descarga directa del PDF de factura"""
+    def get_simple_pdf_url(self, factura_id):
+        """Método simple que devuelve la URL más probable del PDF"""
+        base_url = self.url.rstrip('/')
+        return f"{base_url}/report/pdf/account.report_invoice_with_payments/{factura_id}"
+
+    def download_pdf_with_session(self, factura_id, username=None, password=None):
+        """Descargar PDF usando sesión HTTP directa"""
+        try:
+            import requests
+
+            # Usar credenciales de la conexión si no se proporcionan otras
+            login_user = username or self.username
+            login_pass = password or self.password
+
+            session = requests.Session()
+            base_url = self.url.rstrip('/')
+
+            # Método 1: Intentar con autenticación básica HTTP
+            try:
+                pdf_url = self.get_simple_pdf_url(factura_id)
+                response = session.get(
+                    pdf_url,
+                    auth=requests.auth.HTTPBasicAuth(login_user, login_pass),
+                    timeout=30
+                )
+
+                if response.status_code == 200 and response.headers.get('content-type', '').startswith('application/pdf'):
+                    return response.content
+                else:
+                    print(f"Error con auth básica: {response.status_code}")
+
+            except Exception as e:
+                print(f"Error con autenticación básica: {e}")
+
+            # Método 2: Login web tradicional
+            try:
+                login_url = f"{base_url}/web/login"
+                login_data = {
+                    'login': login_user,
+                    'password': login_pass,
+                    'db': self.db
+                }
+
+                # Hacer POST al login
+                login_response = session.post(login_url, data=login_data, allow_redirects=True)
+
+                if login_response.status_code == 200:
+                    # Verificar si el login fue exitoso
+                    if 'web/login' not in login_response.url:
+                        # Login exitoso, ahora descargar PDF
+                        pdf_url = self.get_simple_pdf_url(factura_id)
+                        pdf_response = session.get(pdf_url)
+
+                        if pdf_response.status_code == 200:
+                            content_type = pdf_response.headers.get('content-type', '')
+                            if 'application/pdf' in content_type:
+                                return pdf_response.content
+                            else:
+                                print(f"Respuesta no es PDF: {content_type}")
+                                return None
+                        else:
+                            print(f"Error descargando PDF: {pdf_response.status_code}")
+                            return None
+                    else:
+                        print("Login web falló - redirigido de vuelta al login")
+                        return None
+                else:
+                    print(f"Error en login web: {login_response.status_code}")
+                    return None
+
+            except Exception as e:
+                print(f"Error con login web: {e}")
+                return None
+
+            return None
+
+        except ImportError:
+            print("Necesitas instalar 'requests': pip install requests")
+            return None
+        except Exception as e:
+            print(f"Error descargando PDF con sesión: {e}")
+            return None
+
+    def get_factura_pdf_info(self, factura_id):
+        """Obtener información completa para descargar PDF"""
         try:
             # Verificar que la factura existe
             factura = self.models.execute_kw(
                 self.db, self.uid, self.password,
                 'account.move', 'read',
-                [factura_id], {'fields': ['name', 'state']}
+                [factura_id], {'fields': ['name', 'state', 'move_type']}
             )
 
             if not factura:
-                return None
+                return {'error': 'Factura no encontrada'}
 
-            factura_name = factura[0].get('name', f'factura_{factura_id}')
-            base_url = self.url.rstrip('/')
+            factura_data = factura[0]
+            if factura_data.get('move_type') != 'out_invoice':
+                return {'error': 'El documento no es una factura de venta'}
 
-            # URL más directa para Odoo 15
-            # Esta URL debería funcionar si el usuario está autenticado en el navegador
-            pdf_url = f"{base_url}/report/pdf/account.report_invoice_with_payments/{factura_id}"
+            # Obtener URLs posibles
+            pdf_info = self.get_factura_pdf(factura_id)
 
-            return {
-                'url': pdf_url,
-                'factura_name': factura_name,
-                'instructions': [
-                    '1. Copia esta URL en tu navegador',
-                    '2. Asegúrate de estar logueado en Odoo',
-                    '3. El PDF se descargará automáticamente'
-                ]
+            if not pdf_info:
+                return {'error': 'No se pudo obtener información del reporte'}
+
+            # Intentar descarga automática
+            pdf_content = self.download_pdf_with_session(factura_id)
+
+            result = {
+                'factura_id': factura_id,
+                'factura_name': factura_data.get('name'),
+                'factura_state': factura_data.get('state'),
+                'pdf_info': pdf_info,
+                'download_attempted': pdf_content is not None
             }
 
-        except Exception as e:
-            print(f"Error generando URL de descarga: {e}")
-            return None
+            if pdf_content:
+                result['pdf_content'] = pdf_content
+                result['status'] = 'success'
+            else:
+                result['status'] = 'manual_download_required'
+                result['instructions'] = [
+                    '1. Abre tu navegador e inicia sesión en Odoo',
+                    f'2. Ve a la URL: {pdf_info.get("primary_url") or pdf_info.get("recommended_url")}',
+                    '3. El PDF se descargará automáticamente'
+                ]
 
-    def get_report_action_info(self, factura_id):
-        """Obtener información completa de la acción de reporte"""
-        try:
-            # Obtener la acción de impresión
-            action = self.models.execute_kw(
-                self.db, self.uid, self.password,
-                'account.move', 'action_invoice_print',
-                [[factura_id]]
-            )
-
-            if not action:
-                return None
-
-            print("=== INFORMACIÓN DE LA ACCIÓN ===")
-            print(f"Tipo: {action.get('type')}")
-            print(f"ID del reporte: {action.get('id')}")
-            print(f"Nombre del reporte: {action.get('report_name')}")
-            print(f"Nombre mostrado: {action.get('name')}")
-            print(f"Contexto: {action.get('context')}")
-            print("=" * 35)
-
-            return action
+            return result
 
         except Exception as e:
-            print(f"Error obteniendo información de acción: {e}")
-            return None
+            return {'error': f'Error obteniendo información del PDF: {e}'}
 
-    # Método simplificado para usar inmediatamente
-    def get_simple_pdf_url(self, factura_id):
-        """Método simple que devuelve la URL del PDF"""
-        base_url = self.url.rstrip('/')
-        return f"{base_url}/report/pdf/account.report_invoice_with_payments/{factura_id}"
+    # Método de uso simple y directo
+    def get_pdf_download_info(self, factura_id):
+        """Método simple para obtener info de descarga"""
+        url = self.get_simple_pdf_url(factura_id)
+        return {
+            'pdf_url': url,
+            'instructions': f'Para descargar el PDF, abre esta URL en tu navegador (logueado en Odoo): {url}'
+        }
