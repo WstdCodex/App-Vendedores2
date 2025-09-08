@@ -168,7 +168,8 @@ def descargar_factura_pdf(factura_id):
 
         buffer = BytesIO()
         p = canvas.Canvas(buffer, pagesize=letter)
-        y = 750
+        width, height = letter
+        y = height - 50
         p.setFont('Helvetica-Bold', 14)
         p.drawString(50, y, f"Factura: {factura['nombre']}")
         y -= 20
@@ -177,20 +178,44 @@ def descargar_factura_pdf(factura_id):
         y -= 20
         p.drawString(50, y, f"Cliente: {factura['cliente']}")
         y -= 30
-        p.drawString(50, y, 'Detalle:')
-        y -= 20
+        # Encabezados de la tabla
+        def draw_headers(y_pos):
+            p.setFont('Helvetica-Bold', 12)
+            p.drawString(50, y_pos, 'Descripción')
+            p.drawString(250, y_pos, 'Cantidad')
+            p.drawString(320, y_pos, 'P.Unit')
+            p.drawString(390, y_pos, 'IVA 21%')
+            p.drawString(460, y_pos, 'Total')
+            y_line = y_pos - 5
+            p.line(50, y_line, 560, y_line)
+            return y_line - 10
+
+        y = draw_headers(y)
+        p.setFont('Helvetica', 10)
         for line in factura.get('lineas', []):
-            line_text = (
-                f"{line['descripcion']} - Cantidad: {line['cantidad']} - "
-                f"Precio: {line['precio_unitario']} - Subtotal: {line['subtotal']}"
-            )
-            p.drawString(50, y, line_text)
+            p.drawString(50, y, str(line['descripcion'])[:35])
+            p.drawRightString(290, y, str(line['cantidad']))
+            p.drawRightString(360, y, f"{line['precio_unitario']:.2f}")
+            p.drawRightString(430, y, f"{line['iva']:.2f}")
+            p.drawRightString(510, y, f"{line['total']:.2f}")
             y -= 15
-            if y < 50:
+            if y < 100:
                 p.showPage()
-                y = 750
-        y -= 10
-        p.drawString(50, y, f"Total: {factura['total']}")
+                y = height - 50
+                y = draw_headers(y)
+                p.setFont('Helvetica', 10)
+
+        y -= 20
+        p.setFont('Helvetica', 12)
+        p.drawString(50, y, f"Importe libre de impuestos: ${factura['importe_untaxed']:.2f}")
+        y -= 15
+        p.drawString(50, y, f"IVA 21%: ${factura['iva_21']:.2f}")
+        y -= 15
+        p.drawString(50, y, f"Perc IIBB ARBA: ${factura['perc_iibb_arba']:.2f}")
+        y -= 15
+        p.drawString(50, y, f"Total: ${factura['total']:.2f}")
+        y -= 15
+        p.drawString(50, y, f"Importe adeudado: ${factura['amount_residual']:.2f}")
         p.showPage()
         p.save()
         buffer.seek(0)
