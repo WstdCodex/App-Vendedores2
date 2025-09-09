@@ -185,6 +185,63 @@ class OdooConnection:
             print(f"Error obteniendo gasto mensual del cliente: {e}")
             return 0.0
 
+    def get_clientes_por_ubicacion_mes(self, year, month, provincia_id=None,
+                                       ciudad='', user_id=None):
+        """Obtener clientes de una ubicación y su gasto mensual.
+
+        Parameters
+        ----------
+        year, month : int
+            Periodo a consultar.
+        provincia_id : int, optional
+            ID de la provincia (``state_id``).
+        ciudad : str, optional
+            Nombre de la ciudad.
+        user_id : int, optional
+            Filtrar por vendedor. Si es ``None`` se incluyen todos los
+            vendedores.
+
+        Returns
+        -------
+        list[dict], float
+            Lista de clientes con el total gastado y el total acumulado.
+        """
+        try:
+            domain = [
+                ('customer_rank', '>', 0),
+                ('parent_id', '=', False),
+            ]
+            if user_id is not None:
+                domain.append(('user_id', '=', user_id))
+            if provincia_id:
+                domain.append(('state_id', '=', provincia_id))
+            if ciudad:
+                domain.append(('city', 'ilike', ciudad))
+
+            partners = self.models.execute_kw(
+                self.db, self.uid, self.password,
+                'res.partner', 'search_read', [domain],
+                {'fields': ['name']}
+            )
+
+            resultados = []
+            total_general = 0.0
+            for p in partners:
+                total_cliente = self.get_total_gasto_cliente_mes(
+                    p['id'], year, month
+                )
+                resultados.append({
+                    'id': p['id'],
+                    'nombre': p['name'],
+                    'total_mes': total_cliente
+                })
+                total_general += total_cliente
+
+            return resultados, total_general
+        except Exception as e:
+            print(f"Error obteniendo clientes por ubicación: {e}")
+            return [], 0.0
+
     def get_vendedor_facturas(self, user_id):
         """Obtener facturas del vendedor"""
         try:
