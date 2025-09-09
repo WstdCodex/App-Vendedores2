@@ -536,9 +536,7 @@ class OdooConnection:
                 }
 
             kwargs = {
-
-                'fields': ['name', 'user_id'],
-
+                'fields': ['name', 'credit', 'debit', 'user_id'],
                 'limit': limit,
             }
             if company_id is not None:
@@ -560,10 +558,9 @@ class OdooConnection:
             if not clientes:
                 return []
 
-            partner_ids = [c['id'] for c in clientes]
-
             # Si no filtramos por compañía, calculamos las deudas en una sola llamada
             if company_id is None:
+                partner_ids = [c['id'] for c in clientes]
                 invoice_domain = [
                     ('move_type', '=', 'out_invoice'),
                     ('state', '=', 'posted'),
@@ -583,28 +580,6 @@ class OdooConnection:
                     if d.get('partner_id')
                 }
 
-            # Calcular saldo a favor por compañía
-            balance_domain = [
-                ('partner_id', 'in', partner_ids),
-                ('account_id.internal_type', '=', 'receivable'),
-                ('parent_state', '=', 'posted'),
-            ]
-            if company_id is not None:
-                balance_domain.append(('company_id', '=', company_id))
-            balance_data = self.models.execute_kw(
-                self.db,
-                self.uid,
-                self.password,
-                'account.move.line',
-                'read_group',
-                [balance_domain, ['debit', 'credit'], ['partner_id']],
-            )
-            saldo_favor_totals = {
-                d['partner_id'][0]: max(d.get('credit', 0.0) - d.get('debit', 0.0), 0.0)
-                for d in balance_data
-                if d.get('partner_id')
-            }
-
             clientes_formateados = []
             for c in clientes:
                 cliente_user_id = c.get('user_id')
@@ -623,7 +598,9 @@ class OdooConnection:
                     continue
 
                 deuda_total = invoice_totals.get(c['id'], 0.0)
-                saldo_favor = saldo_favor_totals.get(c['id'], 0.0)
+                credito = c.get('credit', 0.0)
+                debito = c.get('debit', 0.0)
+                saldo_favor = max(credito - debito, 0.0)
                 clientes_formateados.append(
                     {
                         'id': c['id'],
