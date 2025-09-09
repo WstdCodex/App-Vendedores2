@@ -731,10 +731,12 @@ class OdooConnection:
                 'fields': ['name', 'email', 'phone', 'street', 'credit', 'debit', 'user_id']
             }
             if company_id is not None:
+
                 kwargs['context'] = {
                     'force_company': company_id,
                     'allowed_company_ids': [company_id],
                 }
+
             cliente = self.models.execute_kw(
                 self.db,
                 self.uid,
@@ -758,12 +760,14 @@ class OdooConnection:
                     ]
                     if company_id is not None:
                         invoice_domain.append(('company_id', '=', company_id))
+
                         context = {
                             'force_company': company_id,
                             'allowed_company_ids': [company_id],
                         }
                     else:
                         context = {}
+
                     facturas_pendientes = self.models.execute_kw(
                         self.db,
                         self.uid,
@@ -771,7 +775,9 @@ class OdooConnection:
                         'account.move',
                         'search_read',
                         [invoice_domain],
+
                         {'fields': ['amount_residual'], 'context': context},
+
                     )
                     deuda_total = sum(
                         f.get('amount_residual', 0.0) for f in facturas_pendientes
