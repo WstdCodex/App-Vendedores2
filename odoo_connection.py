@@ -252,10 +252,14 @@ class OdooConnection:
                 },
             )
 
-            totals_dict = {
-                t['partner_id'][0]: t['amount_total_sum']
-                for t in totals if t.get('partner_id')
-            }
+            totals_dict = {}
+            for t in totals:
+                partner = t.get('partner_id')
+                if partner:
+                    total = t.get('amount_total_sum')
+                    if total is None:
+                        total = t.get('amount_total', 0.0)
+                    totals_dict[partner[0]] = total
 
             resultados = []
             total_general = 0.0
