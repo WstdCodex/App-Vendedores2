@@ -903,81 +903,307 @@ class OdooConnection:
         )
 
     def download_pdf_with_session(self, factura_id, username=None, password=None):
-        """Descargar PDF usando sesión HTTP directa"""
+        """Descargar PDF usando sesión HTTP directa - Versión mejorada para Odoo 15"""
         try:
             import requests
+            from urllib.parse import urljoin
 
-            # Usar credenciales de la conexión si no se proporcionan otras
             login_user = username or self.username
             login_pass = password or self.password
-
+            
             session = requests.Session()
             base_url = self.url.rstrip('/')
 
-            # Método 1: Intentar con autenticación básica HTTP
+            # Configurar headers comunes
+            session.headers.update({
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'es-ES,es;q=0.8,en;q=0.6',
+                'Accept-Encoding': 'gzip, deflate',
+                'Connection': 'keep-alive',
+                'Upgrade-Insecure-Requests': '1'
+            })
+
+            print(f"Intentando login con usuario: {login_user} en DB: {self.db}")
+
             try:
-                pdf_url = self.get_simple_pdf_url(factura_id)
-                response = session.get(
-                    pdf_url,
-                    auth=requests.auth.HTTPBasicAuth(login_user, login_pass),
-                    timeout=30
-                )
+                # Paso 1: Obtener la página de login para conseguir el CSRF token
+                login_page_url = f"{base_url}/web/login"
+                print(f"Obteniendo página de login: {login_page_url}")
+                
+                login_page = session.get(login_page_url, timeout=30)
+                print(f"Status página de login: {login_page.status_code}")
+                
+                if login_page.status_code != 200:
+                    print(f"Error obteniendo página de login: {login_page.status_code}")
+                    return None
 
-                if response.status_code == 200 and response.headers.get('content-type', '').startswith('application/pdf'):
-                    return response.content
-                else:
-                    print(f"Error con auth básica: {response.status_code}")
+                # Buscar CSRF token en la página
+                csrf_token = None
+                try:
+                    from bs4 import BeautifulSoup
+                    soup = BeautifulSoup(login_page.content, 'html.parser')
+                    csrf_input = soup.find('input', {'name': 'csrf_token'})
+                    if csrf_input:
+                        csrf_token = csrf_input.get('value')
+                        print(f"CSRF token encontrado: {csrf_token[:20]}..." if csrf_token else "No encontrado")
+                except ImportError:
+                    # Si BeautifulSoup no está disponible, intentar con regex
+                    import re
+                    csrf_match = re.search(r'name="csrf_token"[^>]*value="([^"]*)"', login_page.text)
+                    if csrf_match:
+                        csrf_token = csrf_match.group(1)
+                        print(f"CSRF token encontrado con regex: {csrf_token[:20]}...")
 
-            except Exception as e:
-                print(f"Error con autenticación básica: {e}")
-
-            # Método 2: Login web tradicional
-            try:
-                login_url = f"{base_url}/web/login"
+                # Paso 2: Preparar datos de login
                 login_data = {
                     'login': login_user,
                     'password': login_pass,
                     'db': self.db
                 }
+                
+                # Agregar CSRF token si se encontró
+                if csrf_token:
+                    login_data['csrf_token'] = csrf_token
 
-                # Hacer POST al login
-                login_response = session.post(login_url, data=login_data, allow_redirects=True)
+                print(f"Datos de login preparados: {list(login_data.keys())}")
 
-                if login_response.status_code == 200:
-                    # Verificar si el login fue exitoso (no hay forma perfecta, pero podemos intentar)
-                    if 'web/login' not in login_response.url:
-                        # Login exitoso, ahora descargar PDF
-                        pdf_url = self.get_simple_pdf_url(factura_id)
-                        pdf_response = session.get(pdf_url)
+                # Paso 3: Realizar el login
+                login_response = session.post(
+                    login_page_url, 
+                    data=login_data, 
+                    timeout=30,
+                    allow_redirects=True
+                )
+                
+                print(f"Status login: {login_response.status_code}")
+                print(f"URL final después del login: {login_response.url}")
 
-                        if pdf_response.status_code == 200:
-                            content_type = pdf_response.headers.get('content-type', '')
-                            if 'application/pdf' in content_type:
-                                return pdf_response.content
-                            else:
-                                print(f"Respuesta no es PDF: {content_type}")
-                                return None
-                        else:
-                            print(f"Error descargando PDF: {pdf_response.status_code}")
-                            return None
-                    else:
-                        print("Login web falló - redirigido de vuelta al login")
-                        return None
-                else:
-                    print(f"Error en login web: {login_response.status_code}")
+                # Verificar si el login fue exitoso
+                if login_response.status_code != 200:
+                    print(f"Error en login: Status {login_response.status_code}")
                     return None
 
-            except Exception as e:
-                print(f"Error con login web: {e}")
+                # Verificar que no fuimos redirigidos de vuelta al login
+                if '/web/login' in login_response.url and 'error' in login_response.url.lower():
+                    print("Login falló - redirigido de vuelta al login con error")
+                    return None
+
+                # Verificar que tenemos una sesión válida
+                if 'session_id' not in session.cookies and 'frontend_lang' not in session.cookies:
+                    print("No se estableció una sesión válida")
+                    # Intentar buscar cookies de sesión con nombres alternativos
+                    cookie_names = list(session.cookies.keys())
+                    print(f"Cookies disponibles: {cookie_names}")
+
+                print("Login web exitoso")
+
+                # Paso 4: Intentar descargar el PDF
+                pdf_urls = [
+                    f"{base_url}/report/pdf/account.report_invoice_with_payments/{factura_id}",
+                    f"{base_url}/report/pdf/account.report_invoice/{factura_id}",
+                    f"{base_url}/report/pdf/account.account_invoices/{factura_id}"
+                ]
+
+                for pdf_url in pdf_urls:
+                    print(f"Intentando descargar PDF desde: {pdf_url}")
+                    
+                    try:
+                        pdf_response = session.get(pdf_url, timeout=60)
+                        print(f"Status descarga PDF: {pdf_response.status_code}")
+                        
+                        if pdf_response.status_code == 200:
+                            content_type = pdf_response.headers.get('content-type', '').lower()
+                            print(f"Content-Type: {content_type}")
+                            
+                            if 'application/pdf' in content_type:
+                                print(f"PDF descargado exitosamente, tamaño: {len(pdf_response.content)} bytes")
+                                return pdf_response.content
+                            elif 'text/html' in content_type:
+                                # Si recibimos HTML, puede ser una página de error o login
+                                if 'login' in pdf_response.text.lower():
+                                    print("Recibimos página de login - sesión expirada")
+                                    return None
+                                else:
+                                    print("Recibimos HTML en lugar de PDF")
+                                    continue
+                        elif pdf_response.status_code == 403:
+                            print("Acceso denegado al PDF - verificar permisos")
+                            continue
+                        elif pdf_response.status_code == 404:
+                            print("URL del PDF no encontrada")
+                            continue
+                        else:
+                            print(f"Error descargando PDF: {pdf_response.status_code}")
+                            continue
+                            
+                    except Exception as e:
+                        print(f"Error en descarga de {pdf_url}: {e}")
+                        continue
+
+                print("No se pudo descargar el PDF desde ninguna URL")
                 return None
 
-            return None
+            except Exception as e:
+                print(f"Error en proceso de descarga: {e}")
+                return None
 
         except ImportError:
             print("Necesitas instalar 'requests': pip install requests")
             return None
         except Exception as e:
-            print(f"Error descargando PDF con sesión: {e}")
+            print(f"Error general descargando PDF: {e}")
+            return None
+
+    def get_factura_pdf_info_improved(self, factura_id):
+        """Versión mejorada para obtener información del PDF"""
+        try:
+            # Verificar que la factura existe y es válida
+            factura = self.models.execute_kw(
+                self.db, self.uid, self.password,
+                'account.move', 'read',
+                [factura_id], {'fields': ['name', 'state', 'move_type']}
+            )
+
+            if not factura:
+                return {'error': 'Factura no encontrada', 'status': 'error'}
+
+            factura_data = factura[0]
+            
+            if factura_data.get('move_type') != 'out_invoice':
+                return {'error': 'El documento no es una factura de venta', 'status': 'error'}
+                
+            if factura_data.get('state') not in ['posted']:
+                return {'error': 'La factura debe estar confirmada para generar PDF', 'status': 'error'}
+
+            print(f"Procesando factura {factura_data.get('name')} (ID: {factura_id})")
+
+            # Intentar descarga directa
+            pdf_content = self.download_pdf_with_session(factura_id)
+
+            base_url = self.url.rstrip('/')
+            primary_url = f"{base_url}/report/pdf/account.report_invoice_with_payments/{factura_id}"
+
+            result = {
+                'factura_id': factura_id,
+                'factura_name': factura_data.get('name'),
+                'factura_state': factura_data.get('state'),
+                'pdf_url': primary_url
+            }
+
+            if pdf_content:
+                result.update({
+                    'status': 'success',
+                    'pdf_content': pdf_content,
+                    'pdf_size': len(pdf_content),
+                    'message': 'PDF descargado exitosamente'
+                })
+            else:
+                result.update({
+                    'status': 'manual_download_required',
+                    'message': 'Descarga automática falló. Usa el enlace manual.',
+                    'manual_instructions': [
+                        '1. Abre tu navegador e inicia sesión en Odoo',
+                        f'2. Ve a la URL: {primary_url}',
+                        '3. El PDF se descargará automáticamente'
+                    ]
+                })
+
+            return result
+
+        except Exception as e:
+            print(f"Error obteniendo información del PDF: {e}")
+            return {
+                'error': f'Error interno: {e}',
+                'status': 'error'
+            }
+
+    # Método alternativo usando render directo
+    def download_invoice_pdf_direct(self, factura_id, username=None, password=None):
+        """Método alternativo usando render directo de Odoo"""
+        try:
+            import base64
+            
+            login_user = username or self.username
+            login_pass = password or self.password
+            
+            # Usar credenciales actuales o las proporcionadas
+            uid = self.uid
+            models = self.models
+            
+            # Si se proporcionan credenciales diferentes, hacer nueva autenticación
+            if username or password:
+                import xmlrpc.client
+                common = xmlrpc.client.ServerProxy(f"{self.url}/xmlrpc/2/common", allow_none=True)
+                uid = common.authenticate(self.db, login_user, login_pass, {})
+                if not uid:
+                    print("Error: No se pudo autenticar con las credenciales proporcionadas")
+                    return None
+                models = xmlrpc.client.ServerProxy(f"{self.url}/xmlrpc/2/object", allow_none=True)
+
+            # Lista de reportes a intentar en orden de preferencia
+            report_names = [
+                'account.report_invoice_with_payments',
+                'account.report_invoice',
+                'account.account_invoices',
+                'account.report_invoice_document'
+            ]
+
+            for report_name in report_names:
+                try:
+                    print(f"Intentando generar PDF con reporte: {report_name}")
+                    
+                    # Método 1: render_qweb_pdf
+                    try:
+                        result = models.execute_kw(
+                            self.db, uid, login_pass,
+                            'ir.actions.report', 'render_qweb_pdf',
+                            [report_name, [factura_id]]
+                        )
+                        
+                        if result and len(result) >= 1:
+                            pdf_content = result[0]
+                            if isinstance(pdf_content, str):
+                                pdf_content = base64.b64decode(pdf_content)
+                            elif isinstance(pdf_content, bytes):
+                                pass  # Ya está en bytes
+                            else:
+                                print(f"Tipo de contenido inesperado: {type(pdf_content)}")
+                                continue
+                                
+                            print(f"PDF generado exitosamente con {report_name}, tamaño: {len(pdf_content)} bytes")
+                            return pdf_content
+                            
+                    except Exception as e:
+                        print(f"Error con render_qweb_pdf para {report_name}: {e}")
+
+                    # Método 2: _render_qweb_pdf (método interno)
+                    try:
+                        result = models.execute_kw(
+                            self.db, uid, login_pass,
+                            'ir.actions.report', '_render_qweb_pdf',
+                            [report_name, [factura_id]]
+                        )
+                        
+                        if result and len(result) >= 1:
+                            pdf_content = result[0]
+                            if isinstance(pdf_content, str):
+                                pdf_content = base64.b64decode(pdf_content)
+                            print(f"PDF generado con _render_qweb_pdf, tamaño: {len(pdf_content)} bytes")
+                            return pdf_content
+                            
+                    except Exception as e:
+                        print(f"Error con _render_qweb_pdf para {report_name}: {e}")
+
+                except Exception as e:
+                    print(f"Error general con reporte {report_name}: {e}")
+                    continue
+
+            print("No se pudo generar PDF con ningún reporte")
+            return None
+
+        except Exception as e:
+            print(f"Error en descarga directa: {e}")
             return None
 
 
