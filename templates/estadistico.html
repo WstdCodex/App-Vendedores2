@@ -20,7 +20,16 @@
                         <input type="month" name="mes" class="form-control" value="{{ mes }}">
                     </div>
                     {% if mostrar_todo %}
-                    <div class="col-md-3">
+                    <div class="col-md-2">
+                        <label class="form-label fw-semibold">Compañía:</label>
+                        <select name="company_id" class="form-select" onchange="this.form.submit()">
+                            <option value="">Todas</option>
+                            {% for c in companias %}
+                            <option value="{{ c.id }}" {% if c.id == company_id %}selected{% endif %}>{{ c.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
                         <label class="form-label fw-semibold">Comercial:</label>
                         <select name="vendedor_id" class="form-select" onchange="this.form.submit()">
                             <option value="">Todos</option>
@@ -48,7 +57,7 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="col-md-3">
+                    <div class="{% if mostrar_todo %}col-md-2{% else %}col-md-3{% endif %}">
                         <button class="btn btn-primary w-100" type="submit">
                             <i class="fas fa-search me-2"></i>Ver
                         </button>

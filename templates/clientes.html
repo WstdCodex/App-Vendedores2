@@ -19,12 +19,21 @@
         <!-- Búsqueda -->
         <div class="search-container">
             <div class="row g-3">
-                <div class="{% if mostrar_todo %}col-md-3{% else %}col-md-4{% endif %}">
+                <div class="{% if mostrar_todo %}col-md-2{% else %}col-md-4{% endif %}">
                     <label class="form-label fw-semibold">Buscar Cliente:</label>
                     <input type="text" class="form-control" id="buscarCliente" placeholder="Nombre del cliente...">
                 </div>
                 {% if mostrar_todo %}
-                <div class="col-md-3">
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold">Compañía:</label>
+                    <select id="filtroCompania" class="form-select">
+                        <option value="">Todas</option>
+                        {% for c in companias %}
+                        <option value="{{ c.id }}">{{ c.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
                     <label class="form-label fw-semibold">Comercial:</label>
                     <select id="filtroVendedor" class="form-select">
                         <option value="">Todos</option>
@@ -43,13 +52,13 @@
                         <option value="">Todas</option>
                     </select>
                 </div>
-                <div class="col-md-2 d-flex align-items-center">
+                <div class="{% if mostrar_todo %}col-md-1{% else %}col-md-2{% endif %} d-flex align-items-center">
                     <div class="form-check mt-4">
                         <input class="form-check-input" type="checkbox" id="filtroAdeudados">
                         <label class="form-check-label fw-semibold" for="filtroAdeudados">Adeudados</label>
                     </div>
                 </div>
-                <div class="col-md-2 d-flex align-items-end">
+                <div class="{% if mostrar_todo %}col-md-1{% else %}col-md-2{% endif %} d-flex align-items-end">
                     <button class="btn btn-primary w-100" onclick="buscarClientes()">
                         <i class="fas fa-search"></i>
                     </button>
@@ -79,6 +88,8 @@ function buscarClientes() {
     const ciudad = document.getElementById('filtroCiudad').value;
     const vendedorElem = document.getElementById('filtroVendedor');
     const vendedorId = vendedorElem ? vendedorElem.value : '';
+    const companiaElem = document.getElementById('filtroCompania');
+    const companyId = companiaElem ? companiaElem.value : '';
     const adeudados = document.getElementById('filtroAdeudados').checked;
     mostrarLoading();
     const params = new URLSearchParams();
@@ -87,6 +98,7 @@ function buscarClientes() {
     if (provinciaId) params.append('provincia_id', provinciaId);
     if (ciudad) params.append('ciudad', ciudad);
     if (vendedorId) params.append('vendedor_id', vendedorId);
+    if (companyId) params.append('company_id', companyId);
     params.append('limite', limite);
     if (adeudados) params.append('adeudados', '1');
     fetch(`/api/buscar-clientes?${params.toString()}`)
@@ -162,9 +174,12 @@ function cargarCiudades() {
     const provinciaId = document.getElementById('filtroProvincia').value;
     const vendedorElem = document.getElementById('filtroVendedor');
     const vendedorId = vendedorElem ? vendedorElem.value : '';
+    const companiaElem = document.getElementById('filtroCompania');
+    const companyId = companiaElem ? companiaElem.value : '';
     const params = new URLSearchParams();
     if (provinciaId) params.append('provincia_id', provinciaId);
     if (vendedorId) params.append('vendedor_id', vendedorId);
+    if (companyId) params.append('company_id', companyId);
     const url = `/api/ciudades${params.toString() ? '?' + params.toString() : ''}`;
     fetch(url)
         .then(r => r.json())
@@ -199,6 +214,13 @@ document.getElementById('filtroAdeudados').addEventListener('change', buscarClie
 const vendedorElem = document.getElementById('filtroVendedor');
 if (vendedorElem) {
     vendedorElem.addEventListener('change', () => {
+        cargarCiudades();
+        buscarClientes();
+    });
+}
+const companiaElem = document.getElementById('filtroCompania');
+if (companiaElem) {
+    companiaElem.addEventListener('change', () => {
         cargarCiudades();
         buscarClientes();
     });

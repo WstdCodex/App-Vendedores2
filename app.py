@@ -83,6 +83,7 @@ def estadistico():
     provincia_id = request.args.get('provincia_id', type=int)
     ciudad = request.args.get('ciudad', '')
     vendedor_id = request.args.get('vendedor_id', type=int)
+    company_id = request.args.get('company_id', type=int)
 
     try:
         if mes:
@@ -103,6 +104,8 @@ def estadistico():
             odoo.has_group('sales_team.group_sale_salesman_all_leads')
         )
 
+        companias = odoo.get_companias() if mostrar_todo else []
+
         if mostrar_todo:
             vendedores = odoo.get_vendedores_especificos()
             user_id_param = vendedor_id if vendedor_id else None
@@ -111,7 +114,7 @@ def estadistico():
             user_id_param = session['user_id']
 
         total_general = odoo.get_total_gastos_mes(
-            user_id_param, year, month
+            user_id_param, year, month, company_id
         )
 
         provincias = odoo.get_provincias()
@@ -119,17 +122,18 @@ def estadistico():
         if provincia_id:
             ciudades = odoo.get_ciudades(
                 state_id=provincia_id,
-                user_id=user_id_param
+                user_id=user_id_param,
+                company_id=company_id,
             )
 
         clientes, total_filtrado = odoo.get_clientes_por_ubicacion_mes(
             year, month, provincia_id=provincia_id, ciudad=ciudad,
-            user_id=user_id_param
+            user_id=user_id_param, company_id=company_id
         )
     except Exception as e:
         flash(f'Error al cargar estadísticas: {str(e)}', 'error')
         total_general = None
-        provincias, ciudades, vendedores = [], [], []
+        provincias, ciudades, vendedores, companias = [], [], [], []
         clientes, total_filtrado = [], 0.0
         mostrar_todo = False
 
@@ -148,6 +152,8 @@ def estadistico():
         mostrar_todo=mostrar_todo,
         vendedores=vendedores,
         vendedor_id=vendedor_id,
+        companias=companias,
+        company_id=company_id,
     )
 
 @app.route('/clientes')
@@ -162,11 +168,14 @@ def clientes():
             odoo.has_group('sales_team.group_sale_manager') or
             odoo.has_group('sales_team.group_sale_salesman_all_leads')
         )
+        companias = odoo.get_companias() if mostrar_todo else []
     except Exception:
         mostrar_todo = False
+        companias = []
     # La lista de clientes se cargará mediante una solicitud asíncrona
     # para evitar demoras al cargar la página inicial.
-    return render_template('clientes.html', clientes=[], mostrar_todo=mostrar_todo)
+    return render_template('clientes.html', clientes=[], mostrar_todo=mostrar_todo,
+                           companias=companias)
 
 @app.route('/clientes/<int:cliente_id>')
 def cliente_detalle(cliente_id):
@@ -397,6 +406,7 @@ def api_ciudades():
 
     provincia_id = request.args.get('provincia_id', type=int)
     vendedor_id = request.args.get('vendedor_id', type=int)
+    company_id = request.args.get('company_id', type=int)
 
     try:
         odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
@@ -411,7 +421,8 @@ def api_ciudades():
             user_id_param = vendedor_id
         ciudades = odoo.get_ciudades(
             state_id=provincia_id,
-            user_id=user_id_param
+            user_id=user_id_param,
+            company_id=company_id,
         )
         return jsonify(ciudades)
     except Exception as e:
@@ -428,6 +439,7 @@ def api_buscar_clientes():
     ciudad = request.args.get('ciudad', '')
     vendedor_id = request.args.get('vendedor_id', type=int)
     adeudados = request.args.get('adeudados')
+    company_id = request.args.get('company_id', type=int)
 
     try:
         odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
@@ -446,7 +458,8 @@ def api_buscar_clientes():
             user_id=user_id_param,
             limit=int(limite),
             provincia_id=provincia_id,
-            ciudad=ciudad
+            ciudad=ciudad,
+            company_id=company_id,
         )
         if adeudados:
             clientes = [c for c in clientes if c.get('deuda_total', 0) > 0]
