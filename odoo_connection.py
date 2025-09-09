@@ -127,7 +127,7 @@ class OdooConnection:
         try:
             nombres = [
                 'W.STANDARD ARGENTINA',
-                'W.STANDARD GROUP.SRL',
+                'W.STANDARD GROUP SRL',
                 'BARDELLI GUALTERIO LUIS JUAN',
             ]
             companias = self.models.execute_kw(
@@ -241,8 +241,6 @@ class OdooConnection:
                 domain.append(('state_id', '=', provincia_id))
             if ciudad:
                 domain.append(('city', 'ilike', ciudad))
-            if company_id is not None:
-                domain.append(('company_id', '=', company_id))
 
             partners = self.models.execute_kw(
                 self.db, self.uid, self.password,
@@ -454,8 +452,6 @@ class OdooConnection:
                     ('customer_rank', '>', 0),
                     ('parent_id', '=', False)
                 ])
-            if company_id is not None:
-                domain.append(('company_id', '=', company_id))
 
             partners = self.models.execute_kw(
                 self.db,
@@ -515,14 +511,13 @@ class OdooConnection:
                 domain.append(('state_id', '=', provincia_id))
             if ciudad:
                 domain.append(('city', 'ilike', ciudad))
-            if company_id is not None:
-                domain.append(('company_id', '=', company_id))
 
             print(f"Buscando clientes con dominio: {domain}")
 
             # Utilizamos ``search_read`` con un límite para obtener los
             # datos de los clientes en una sola llamada y reducir el
             # tiempo de respuesta.
+            search_limit = 0 if company_id is not None else limit
             clientes = self.models.execute_kw(
                 self.db,
                 self.uid,
@@ -532,7 +527,7 @@ class OdooConnection:
                 [domain],
                 {
                     'fields': ['name', 'credit', 'debit', 'user_id'],
-                    'limit': limit,
+                    'limit': search_limit,
                 },
             )
 
@@ -553,23 +548,47 @@ class OdooConnection:
                     print(f"Cliente {c.get('name')} tiene vendedor {cliente_user_id}, esperado {user_id}")
                     continue
 
+                # Verificar si el cliente tiene facturas en la compañía seleccionada
+                if company_id is not None:
+                    tiene_facturas = self.models.execute_kw(
+                        self.db,
+                        self.uid,
+                        self.password,
+                        'account.move',
+                        'search',
+                        [[
+                            ('move_type', '=', 'out_invoice'),
+                            ('state', '!=', 'draft'),
+                            ('partner_id', '=', c['id']),
+                            ('company_id', '=', company_id),
+                        ]],
+                        {'limit': 1},
+                    )
+                    if not tiene_facturas:
+                        continue
+
                 # Calcular la deuda total sumando los montos pendientes de las
                 # facturas publicadas del cliente.
                 deuda_total = 0.0
                 try:
+                    invoice_domain = [
+                        ('move_type', '=', 'out_invoice'),
+                        ('partner_id', '=', c['id']),
+                        ('state', '=', 'posted'),
+                        ('amount_residual', '>', 0),
+                    ]
+                    if company_id is not None:
+                        invoice_domain.append(('company_id', '=', company_id))
                     facturas_pendientes = self.models.execute_kw(
                         self.db,
                         self.uid,
                         self.password,
                         'account.move',
                         'search_read',
-                        [[
-                            ('move_type', '=', 'out_invoice'),
-                            ('partner_id', '=', c['id']),
-                            ('state', '=', 'posted'),
-                            ('amount_residual', '>', 0),
-                        ]],
-                        {'fields': ['amount_residual']},
+                        [invoice_domain],
+                        {
+                            'fields': ['amount_residual'],
+                        },
                     )
                     deuda_total = sum(
                         f.get('amount_residual', 0.0) for f in facturas_pendientes
