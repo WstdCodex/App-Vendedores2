@@ -1055,8 +1055,46 @@ class OdooConnection:
             print(f"Error general descargando PDF: {e}")
             return None
 
+    def get_invoice_attachment(self, factura_id):
+        """Buscar un PDF existente en los adjuntos de la factura."""
+        try:
+            attachments = self.models.execute_kw(
+                self.db, self.uid, self.password,
+                'ir.attachment', 'search_read',
+                [[
+                    ('res_model', '=', 'account.move'),
+                    ('res_id', '=', factura_id),
+                    ('mimetype', '=', 'application/pdf')
+                ]],
+                {'fields': ['datas'], 'limit': 1}
+            )
+            if attachments:
+                import base64
+                data = attachments[0].get('datas')
+                if data:
+                    return base64.b64decode(data)
+            return None
+        except Exception as e:
+            print(f"Error buscando adjunto PDF: {e}")
+            return None
+
+    def force_generate_pdf_attachment(self, factura_id):
+        """Forzar la generación de un adjunto PDF de la factura."""
+        try:
+            try:
+                self.models.execute_kw(
+                    self.db, self.uid, self.password,
+                    'account.move', 'action_invoice_print', [[factura_id]]
+                )
+            except Exception as e:
+                print(f"Error al forzar impresión de la factura: {e}")
+            return self.get_invoice_attachment(factura_id)
+        except Exception as e:
+            print(f"Error generando adjunto PDF: {e}")
+            return None
+
     def get_factura_pdf_info_improved(self, factura_id):
-        """Versión mejorada para obtener información del PDF"""
+        """Versión mejorada para obtener información del PDF con múltiples estrategias"""
         try:
             # Verificar que la factura existe y es válida
             factura = self.models.execute_kw(
@@ -1069,17 +1107,44 @@ class OdooConnection:
                 return {'error': 'Factura no encontrada', 'status': 'error'}
 
             factura_data = factura[0]
-            
+
             if factura_data.get('move_type') != 'out_invoice':
                 return {'error': 'El documento no es una factura de venta', 'status': 'error'}
-                
+
             if factura_data.get('state') not in ['posted']:
                 return {'error': 'La factura debe estar confirmada para generar PDF', 'status': 'error'}
 
             print(f"Procesando factura {factura_data.get('name')} (ID: {factura_id})")
 
-            # Intentar descarga directa
-            pdf_content = self.download_pdf_with_session(factura_id)
+            pdf_content = None
+            method_used = None
+
+            # Estrategia 1: Buscar en adjuntos existentes
+            print("=== Estrategia 1: Buscando adjuntos existentes ===")
+            pdf_content = self.get_invoice_attachment(factura_id)
+            if pdf_content:
+                method_used = "attachment"
+
+            # Estrategia 2: Render directo vía XML-RPC
+            if not pdf_content:
+                print("=== Estrategia 2: Render directo XML-RPC ===")
+                pdf_content = self.download_invoice_pdf_direct(factura_id)
+                if pdf_content:
+                    method_used = "xmlrpc_direct"
+
+            # Estrategia 3: Forzar generación y buscar adjunto
+            if not pdf_content:
+                print("=== Estrategia 3: Forzar generación ===")
+                pdf_content = self.force_generate_pdf_attachment(factura_id)
+                if pdf_content:
+                    method_used = "forced_generation"
+
+            # Estrategia 4: Descarga vía web (como último recurso)
+            if not pdf_content:
+                print("=== Estrategia 4: Descarga web ===")
+                pdf_content = self.download_pdf_with_session(factura_id)
+                if pdf_content:
+                    method_used = "web_session"
 
             base_url = self.url.rstrip('/')
             primary_url = f"{base_url}/report/pdf/account.report_invoice_with_payments/{factura_id}"
@@ -1088,7 +1153,8 @@ class OdooConnection:
                 'factura_id': factura_id,
                 'factura_name': factura_data.get('name'),
                 'factura_state': factura_data.get('state'),
-                'pdf_url': primary_url
+                'pdf_url': primary_url,
+                'method_used': method_used
             }
 
             if pdf_content:
@@ -1096,16 +1162,20 @@ class OdooConnection:
                     'status': 'success',
                     'pdf_content': pdf_content,
                     'pdf_size': len(pdf_content),
-                    'message': 'PDF descargado exitosamente'
+                    'message': f'PDF obtenido exitosamente usando: {method_used}'
                 })
             else:
                 result.update({
                     'status': 'manual_download_required',
-                    'message': 'Descarga automática falló. Usa el enlace manual.',
+                    'message': 'Todas las estrategias automáticas fallaron. Usa el enlace manual.',
                     'manual_instructions': [
                         '1. Abre tu navegador e inicia sesión en Odoo',
                         f'2. Ve a la URL: {primary_url}',
                         '3. El PDF se descargará automáticamente'
+                    ],
+                    'alternative_urls': [
+                        f"{base_url}/web/content?model=account.move&id={factura_id}&field=message_main_attachment_id&download=true",
+                        f"{base_url}/web/report/pdf/account.report_invoice/{factura_id}"
                     ]
                 })
 
