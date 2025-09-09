@@ -122,7 +122,29 @@ class OdooConnection:
             return text[:idx].strip()
         return text
 
-    def get_total_gastos_mes(self, user_id, year, month):
+    def get_companias(self):
+        """Obtener compañías específicas disponibles en Odoo."""
+        try:
+            nombres = [
+                'W.STANDARD ARGENTINA',
+                'W.STANDARD GROUP.SRL',
+                'BARDELLI GUALTERIO LUIS JUAN',
+            ]
+            companias = self.models.execute_kw(
+                self.db,
+                self.uid,
+                self.password,
+                'res.company',
+                'search_read',
+                [[('name', 'in', nombres)]],
+                {'fields': ['name']},
+            )
+            return [{'id': c['id'], 'nombre': c['name']} for c in companias]
+        except Exception as e:
+            print(f"Error obteniendo compañías: {e}")
+            return []
+
+    def get_total_gastos_mes(self, user_id, year, month, company_id=None):
         """Obtener el total facturado en un mes específico.
 
         Si ``user_id`` es ``None`` se calcula el total de todos los
@@ -140,6 +162,8 @@ class OdooConnection:
             ]
             if user_id is not None:
                 domain.append(('invoice_user_id', '=', user_id))
+            if company_id is not None:
+                domain.append(('company_id', '=', company_id))
             facturas_ids = self.models.execute_kw(
                 self.db, self.uid, self.password,
                 'account.move', 'search', [domain]
@@ -186,7 +210,7 @@ class OdooConnection:
             return 0.0
 
     def get_clientes_por_ubicacion_mes(self, year, month, provincia_id=None,
-                                       ciudad='', user_id=None):
+                                       ciudad='', user_id=None, company_id=None):
         """Obtener clientes de una ubicación y su gasto mensual.
 
         Parameters
@@ -217,6 +241,8 @@ class OdooConnection:
                 domain.append(('state_id', '=', provincia_id))
             if ciudad:
                 domain.append(('city', 'ilike', ciudad))
+            if company_id is not None:
+                domain.append(('company_id', '=', company_id))
 
             partners = self.models.execute_kw(
                 self.db, self.uid, self.password,
@@ -239,6 +265,8 @@ class OdooConnection:
                 ('invoice_date', '<=', end_date),
                 ('partner_id', 'in', partner_ids),
             ]
+            if company_id is not None:
+                invoice_domain.append(('company_id', '=', company_id))
             if user_id is not None:
                 invoice_domain.append(('invoice_user_id', '=', user_id))
 
@@ -414,8 +442,8 @@ class OdooConnection:
             print(f"Error obteniendo provincias: {e}")
             return []
 
-    def get_ciudades(self, state_id=None, user_id=None):
-        """Obtener lista de ciudades disponibles, opcionalmente filtradas por provincia y vendedor."""
+    def get_ciudades(self, state_id=None, user_id=None, company_id=None):
+        """Obtener lista de ciudades disponibles, filtradas opcionalmente por provincia, vendedor y compañía."""
         try:
             domain = [('city', '!=', False)]
             if state_id:
@@ -426,6 +454,8 @@ class OdooConnection:
                     ('customer_rank', '>', 0),
                     ('parent_id', '=', False)
                 ])
+            if company_id is not None:
+                domain.append(('company_id', '=', company_id))
 
             partners = self.models.execute_kw(
                 self.db,
@@ -463,7 +493,7 @@ class OdooConnection:
 
     def buscar_clientes(self, nombre_cliente: str = '', user_id: int = None,
                          limit: int = 20, provincia_id: int = None,
-                         ciudad: str = ''):
+                         ciudad: str = '', company_id: int = None):
         """Buscar clientes en Odoo, opcionalmente filtrados por vendedor.
 
         Cuando ``user_id`` es ``None`` se devuelven todos los clientes
@@ -485,6 +515,8 @@ class OdooConnection:
                 domain.append(('state_id', '=', provincia_id))
             if ciudad:
                 domain.append(('city', 'ilike', ciudad))
+            if company_id is not None:
+                domain.append(('company_id', '=', company_id))
 
             print(f"Buscando clientes con dominio: {domain}")
 
