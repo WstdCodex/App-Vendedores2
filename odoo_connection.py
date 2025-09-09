@@ -853,8 +853,10 @@ class OdooConnection:
         XML-RPC; si falla, utiliza un método basado en sesión HTTP como
         respaldo.
         """
+
         import base64
         import xmlrpc.client
+
 
         login_user = username or self.username
         login_pass = password or self.password
@@ -873,6 +875,7 @@ class OdooConnection:
                 'account.report_invoice_with_payments',
                 'account.report_invoice'
             ]
+
 
             for report_name in report_names:
                 try:
