@@ -230,13 +230,15 @@ class OdooConnection:
                 total_cliente = self.get_total_gasto_cliente_mes(
                     p['id'], year, month
                 )
-                resultados.append({
-                    'id': p['id'],
-                    'nombre': p['name'],
-                    'total_mes': total_cliente
-                })
-                total_general += total_cliente
+                if total_cliente > 0:
+                    resultados.append({
+                        'id': p['id'],
+                        'nombre': p['name'],
+                        'total_mes': total_cliente
+                    })
+                    total_general += total_cliente
 
+            resultados.sort(key=lambda x: x['total_mes'], reverse=True)
             return resultados, total_general
         except Exception as e:
             print(f"Error obteniendo clientes por ubicación: {e}")
