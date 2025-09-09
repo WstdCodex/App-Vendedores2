@@ -80,6 +80,9 @@ def estadistico():
         return redirect(url_for('login'))
 
     mes = request.args.get('mes')
+    provincia_id = request.args.get('provincia_id', type=int)
+    ciudad = request.args.get('ciudad', '')
+
     try:
         if mes:
             year, month = map(int, mes.split('-'))
@@ -98,15 +101,44 @@ def estadistico():
             odoo.has_group('sales_team.group_sale_manager') or
             odoo.has_group('sales_team.group_sale_salesman_all_leads')
         )
-        total = odoo.get_total_gastos_mes(
+
+        total_general = odoo.get_total_gastos_mes(
             None if mostrar_todo else session['user_id'], year, month
         )
+
+        provincias = odoo.get_provincias()
+        ciudades = []
+        if provincia_id:
+            ciudades = odoo.get_ciudades(
+                state_id=provincia_id,
+                user_id=None if mostrar_todo else session['user_id']
+            )
+
+        clientes = []
+        total_filtrado = 0.0
+        if provincia_id or ciudad:
+            clientes, total_filtrado = odoo.get_clientes_por_ubicacion_mes(
+                year, month, provincia_id=provincia_id, ciudad=ciudad,
+                user_id=None if mostrar_todo else session['user_id']
+            )
     except Exception as e:
         flash(f'Error al cargar estadísticas: {str(e)}', 'error')
-        total = None
+        total_general = None
+        provincias, ciudades = [], []
+        clientes, total_filtrado = [], 0.0
 
     selected_month = f"{year:04d}-{month:02d}"
-    return render_template('estadistico.html', total=total, mes=selected_month)
+    return render_template(
+        'estadistico.html',
+        total=total_general,
+        mes=selected_month,
+        provincias=provincias,
+        ciudades=ciudades,
+        provincia_id=provincia_id,
+        ciudad=ciudad,
+        clientes=clientes,
+        total_filtrado=total_filtrado,
+    )
 
 @app.route('/clientes')
 def clientes():

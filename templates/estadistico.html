@@ -15,11 +15,29 @@
         <div class="card">
             <div class="card-body">
                 <form method="get" class="row g-3 align-items-end">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="form-label fw-semibold">Mes:</label>
                         <input type="month" name="mes" class="form-control" value="{{ mes }}">
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Provincia:</label>
+                        <select name="provincia_id" class="form-select" onchange="this.form.submit()">
+                            <option value="">Todas</option>
+                            {% for p in provincias %}
+                            <option value="{{ p.id }}" {% if p.id == provincia_id %}selected{% endif %}>{{ p.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Ciudad:</label>
+                        <select name="ciudad" class="form-select" onchange="this.form.submit()">
+                            <option value="">Todas</option>
+                            {% for c in ciudades %}
+                            <option value="{{ c.nombre }}" {% if c.nombre == ciudad %}selected{% endif %}>{{ c.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
                         <button class="btn btn-primary w-100" type="submit">
                             <i class="fas fa-search me-2"></i>Ver
                         </button>
@@ -29,6 +47,33 @@
                 <div class="text-center mt-4">
                     <h4 class="fw-bold">Total facturado este mes</h4>
                     <p class="display-6 text-primary">$ {{ total|format_currency }}</p>
+                </div>
+                {% endif %}
+
+                {% if clientes %}
+                <div class="mt-4">
+                    <h5 class="fw-bold">Clientes en la ubicación seleccionada</h5>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Cliente</th>
+                                    <th class="text-end">Total del mes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for c in clientes %}
+                                <tr>
+                                    <td>{{ c.nombre }}</td>
+                                    <td class="text-end">$ {{ c.total_mes|format_currency }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="text-end fw-bold">
+                        Total ubicación: $ {{ total_filtrado|format_currency }}
+                    </div>
                 </div>
                 {% endif %}
             </div>
