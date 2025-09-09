@@ -25,6 +25,9 @@
                 <button type="button" class="btn btn-secondary mt-3" id="share-button">
                     <i class="fas fa-share-alt me-2"></i>Compartir
                 </button>
+                <button type="button" class="btn btn-secondary mt-3" id="print-button">
+                    <i class="fas fa-print me-2"></i>Imprimir
+                </button>
             </div>
         </div>
 
@@ -53,33 +56,6 @@
                             {% endfor %}
                         </tbody>
                     </table>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-<!-- Modal de opciones de compartir -->
-<div class="modal fade" id="shareModal" tabindex="-1" aria-labelledby="shareModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="shareModalLabel">Compartir factura</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="d-grid gap-2">
-                    <a id="whatsappShare" class="btn btn-success" target="_blank">
-                        <i class="fab fa-whatsapp me-2"></i>WhatsApp
-                    </a>
-                    <a id="gmailShare" class="btn btn-danger" target="_blank">
-                        <i class="fas fa-envelope me-2"></i>Gmail
-                    </a>
-                    <a id="instagramShare" class="btn btn-warning" target="_blank">
-                        <i class="fab fa-instagram me-2"></i>Instagram
-                    </a>
-                    <button type="button" class="btn btn-primary" id="printButton">
-                        <i class="fas fa-print me-2"></i>Imprimir
-                    </button>
                 </div>
             </div>
         </div>
@@ -128,82 +104,24 @@ document.getElementById('share-button').addEventListener('click', async () => {
             await navigator.share({
                 title: 'Factura {{ factura.nombre }}',
                 files: [downloadedFile]
-
             });
         } else {
             throw new Error('Compartir archivos no soportado');
         }
     } catch (e) {
-        const modal = new bootstrap.Modal(document.getElementById('shareModal'));
-        modal.show();
+        alert('Este navegador no soporta compartir archivos. Por favor, descargue el PDF y compártalo manualmente.');
+
     }
 });
 
-async function shareViaNavigator() {
-    if (!downloadedFile) {
-        await fetchPdf();
-    }
-    if (navigator.share && navigator.canShare && navigator.canShare({ files: [downloadedFile] })) {
-        await navigator.share({
-            title: 'Factura {{ factura.nombre }}',
-            files: [downloadedFile]
-        });
-        return true;
-    }
-    return false;
-}
+document.getElementById('print-button').addEventListener('click', function() {
 
-const whatsappShare = document.getElementById('whatsappShare');
-whatsappShare.href = '#';
-whatsappShare.addEventListener('click', async (e) => {
-    e.preventDefault();
-    try {
-
-        const shared = await shareViaNavigator();
-        if (shared) return;
-
-    } catch (err) {
-        // Si no se puede compartir el archivo, se continúa con el enlace
-    }
-    window.open(`https://wa.me/?text=${encodeURIComponent(pdfUrl)}`, '_blank');
-});
-
-const gmailShare = document.getElementById('gmailShare');
-gmailShare.addEventListener('click', async (e) => {
-    e.preventDefault();
-    try {
-
-        const shared = await shareViaNavigator();
-        if (shared) return;
-
-    } catch (err) {
-        // Fallback a mailto con enlace al PDF
-    }
-    window.open(`mailto:?subject=${encodeURIComponent('Factura ' + '{{ factura.nombre }}')}&body=${encodeURIComponent(pdfUrl)}`, '_blank');
-});
-
-const instagramShare = document.getElementById('instagramShare');
-instagramShare.addEventListener('click', async (e) => {
-    e.preventDefault();
-    try {
-
-        const shared = await shareViaNavigator();
-        if (shared) return;
-
-    } catch (err) {
-        // Fallback al enlace con URL
-    }
-    window.open(`https://www.instagram.com/?url=${encodeURIComponent(pdfUrl)}`, '_blank');
-});
-
-document.getElementById('printButton').addEventListener('click', function() {
     const printWindow = window.open(pdfUrl, '_blank');
     if (printWindow) {
         printWindow.addEventListener('load', function() {
             printWindow.print();
         }, { once: true });
     }
-
 });
 </script>
 {% endblock %}
