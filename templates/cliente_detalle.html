@@ -27,12 +27,10 @@
                         <i class="fas fa-money-bill-wave me-2 text-danger"></i>
                         Deuda total: ${{ cliente.deuda_total|format_currency }}
                     </p>
-                    {% if cliente.saldo_favor > 0 %}
                     <p class="mb-1">
                         <i class="fas fa-coins me-2 text-success"></i>
-                        Saldo a favor: ${{ cliente.saldo_favor|format_currency }}
+                        Saldo a favor: {% if cliente.saldo_favor and cliente.saldo_favor > 0 %}${{ cliente.saldo_favor|format_currency }}{% else %}0{% endif %}
                     </p>
-                    {% endif %}
                     <p class="mb-1">
                         <i class="fas fa-shopping-cart me-2 text-info"></i>
                         Gastó: ${{ total_mes|format_currency }}
