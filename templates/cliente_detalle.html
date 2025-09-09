@@ -11,7 +11,7 @@
             <h3 class="fw-bold text-white">
                 <i class="fas fa-user me-2"></i>{{ cliente.nombre }}
             </h3>
-            <a href="{{ url_for('clientes') }}" class="btn btn-outline-light">
+            <a href="{{ return_url or url_for('clientes') }}" class="btn btn-outline-light">
                 <i class="fas fa-arrow-left me-2"></i>Volver
             </a>
         </div>
@@ -137,6 +137,7 @@
 {% block extra_js %}
 <script>
 const CLIENTE_ID = {{ cliente.id }};
+const MES = "{{ mes }}";
 function buscarFacturasCliente() {
     const codigoFactura = document.getElementById('buscarFactura').value;
     const estadoFiltro = document.getElementById('filtroEstado').value;
@@ -144,6 +145,7 @@ function buscarFacturasCliente() {
     const params = new URLSearchParams();
     if (codigoFactura) params.append('codigo', codigoFactura);
     if (estadoFiltro) params.append('estado', estadoFiltro);
+    if (MES) params.append('mes', MES);
     fetch(`/api/cliente/${CLIENTE_ID}/facturas?${params.toString()}`)
         .then(response => response.json())
         .then(data => {

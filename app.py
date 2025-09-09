@@ -114,13 +114,10 @@ def estadistico():
                 user_id=None if mostrar_todo else session['user_id']
             )
 
-        clientes = []
-        total_filtrado = 0.0
-        if provincia_id or ciudad:
-            clientes, total_filtrado = odoo.get_clientes_por_ubicacion_mes(
-                year, month, provincia_id=provincia_id, ciudad=ciudad,
-                user_id=None if mostrar_todo else session['user_id']
-            )
+        clientes, total_filtrado = odoo.get_clientes_por_ubicacion_mes(
+            year, month, provincia_id=provincia_id, ciudad=ciudad,
+            user_id=None if mostrar_todo else session['user_id']
+        )
     except Exception as e:
         flash(f'Error al cargar estadísticas: {str(e)}', 'error')
         total_general = None
@@ -154,20 +151,39 @@ def cliente_detalle(cliente_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
+    mes = request.args.get('mes')
+    return_url = request.args.get('return_url')
+
     try:
         odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
                               session['username'], session['password'])
         odoo.uid = session['user_id']
 
         cliente_info = odoo.get_cliente(cliente_id)
-        facturas = odoo.get_facturas_cliente(cliente_id)
 
-        now = datetime.now()
-        total_mes = odoo.get_total_gasto_cliente_mes(cliente_id, now.year, now.month)
+        if mes:
+            try:
+                year, month = map(int, mes.split('-'))
+            except ValueError:
+                now = datetime.now()
+                year, month = now.year, now.month
+                mes = f"{year:04d}-{month:02d}"
+            facturas = odoo.get_facturas_cliente_mes(cliente_id, year, month)
+            total_mes = odoo.get_total_gasto_cliente_mes(cliente_id, year, month)
+        else:
+            facturas = odoo.get_facturas_cliente(cliente_id)
+            now = datetime.now()
+            year, month = now.year, now.month
+            mes = f"{year:04d}-{month:02d}"
+            total_mes = odoo.get_total_gasto_cliente_mes(cliente_id, year, month)
 
-        return render_template('cliente_detalle.html', cliente=cliente_info, facturas=facturas, total_mes=total_mes)
+        return render_template('cliente_detalle.html', cliente=cliente_info,
+                               facturas=facturas, total_mes=total_mes,
+                               mes=mes, return_url=return_url)
     except Exception as e:
         flash(f'Error al cargar cliente: {str(e)}', 'error')
+        if return_url:
+            return redirect(return_url)
         return redirect(url_for('clientes'))
 
 @app.route('/clientes/<int:cliente_id>/factura/<int:factura_id>')
@@ -393,13 +409,26 @@ def api_facturas_cliente(cliente_id):
 
     codigo_factura = request.args.get('codigo', '')
     estado_filtro = request.args.get('estado', '')
+    mes = request.args.get('mes')
 
     try:
         odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
                               session['username'], session['password'])
         odoo.uid = session['user_id']
-
-        facturas = odoo.get_facturas_cliente(cliente_id, codigo_factura, estado_filtro)
+        if mes:
+            try:
+                year, month = map(int, mes.split('-'))
+                facturas = odoo.get_facturas_cliente_mes(
+                    cliente_id, year, month, codigo_factura, estado_filtro
+                )
+            except ValueError:
+                facturas = odoo.get_facturas_cliente(
+                    cliente_id, codigo_factura, estado_filtro
+                )
+        else:
+            facturas = odoo.get_facturas_cliente(
+                cliente_id, codigo_factura, estado_filtro
+            )
         return jsonify(facturas)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
