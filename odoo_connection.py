@@ -847,60 +847,50 @@ class OdooConnection:
         return f"{base_url}/report/pdf/account.report_invoice_with_payments/{factura_id}"
 
     def download_invoice_pdf(self, factura_id, username=None, password=None):
-        """Descargar el PDF de una factura directamente desde Odoo.
+        """Descargar el PDF de una factura sin usar la ruta ``/report/pdf``.
 
-        Intenta primero utilizar el servicio de reportes de Odoo vía
-        XML-RPC; si falla, utiliza un método basado en sesión HTTP como
-        respaldo.
+        El método intenta, en orden:
+
+        1. Buscar un adjunto PDF existente asociado a la factura.
+        2. Generar el PDF mediante los reportes QWeb de Odoo usando XML-RPC.
+        3. Forzar la generación del adjunto y devolverlo.
+
+        Parameters
+        ----------
+        factura_id : int
+            ID de la factura en Odoo.
+        username, password : str, optional
+            Credenciales alternativas para realizar la descarga.
+
+        Returns
+        -------
+        bytes | None
+            Contenido del PDF en bytes o ``None`` si no se pudo obtener.
         """
-
-        import base64
-        import xmlrpc.client
-
 
         login_user = username or self.username
         login_pass = password or self.password
 
         try:
-            uid = self.uid
-            models = self.models
-            if username or password:
-                common = xmlrpc.client.ServerProxy(f"{self.url}/xmlrpc/2/common")
-                uid = common.authenticate(self.db, login_user, login_pass, {})
-                if not uid:
-                    return None
-                models = xmlrpc.client.ServerProxy(f"{self.url}/xmlrpc/2/object")
+            # 1) Buscar si ya existe un adjunto PDF de la factura
+            pdf_content = self.get_invoice_attachment(factura_id)
+            if pdf_content:
+                return pdf_content
 
-            report_names = [
-                'account.report_invoice_with_payments',
-                'account.report_invoice'
-            ]
+            # 2) Intentar generar el PDF directamente via XML-RPC
+            pdf_content = self.download_invoice_pdf_direct(
+                factura_id, username=login_user, password=login_pass
+            )
+            if pdf_content:
+                return pdf_content
 
+            # 3) Forzar la generación del adjunto y devolverlo
+            pdf_content = self.force_generate_pdf_attachment(factura_id)
+            return pdf_content
 
-            for report_name in report_names:
-                try:
-                    pdf_res = models.execute_kw(
-                        self.db,
-                        uid,
-                        login_pass,
-                        'ir.actions.report',
-                        'render_qweb_pdf',
-                        [report_name, [factura_id]]
-                    )
-                    pdf_content = pdf_res[0]
-                    if isinstance(pdf_content, str):
-                        pdf_content = base64.b64decode(pdf_content)
-                    return pdf_content
-                except Exception:
-                    continue
         except Exception as e:
-            print(f"Error con render_qweb_pdf: {e}")
-
-        return self.download_pdf_with_session(
-            factura_id,
-            username=login_user,
-            password=login_pass
-        )
+            print(f"Error descargando PDF directamente: {e}")
+            return None
 
     def download_pdf_with_session(self, factura_id, username=None, password=None):
         """Descargar PDF usando sesión HTTP directa - Versión mejorada para Odoo 15"""
