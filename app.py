@@ -184,13 +184,14 @@ def cliente_detalle(cliente_id):
 
     mes = request.args.get('mes')
     return_url = request.args.get('return_url')
+    company_id = request.args.get('company_id', type=int)
 
     try:
         odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
                               session['username'], session['password'])
         odoo.uid = session['user_id']
 
-        cliente_info = odoo.get_cliente(cliente_id)
+        cliente_info = odoo.get_cliente(cliente_id, company_id=company_id)
 
         if mes:
             try:

@@ -716,9 +716,14 @@ class OdooConnection:
             print(f"Error obteniendo clientes del vendedor: {e}")
             return []
 
-    def get_cliente(self, partner_id):
+    def get_cliente(self, partner_id, company_id=None):
         """Obtener información del cliente"""
         try:
+            kwargs = {
+                'fields': ['name', 'email', 'phone', 'street', 'credit', 'debit', 'user_id']
+            }
+            if company_id is not None:
+                kwargs['context'] = {'force_company': company_id}
             cliente = self.models.execute_kw(
                 self.db,
                 self.uid,
@@ -726,9 +731,7 @@ class OdooConnection:
                 'res.partner',
                 'read',
                 [partner_id],
-                {
-                    'fields': ['name', 'email', 'phone', 'street', 'credit', 'debit', 'user_id']
-                },
+                kwargs,
             )
             if cliente:
                 c = cliente[0]
@@ -736,18 +739,21 @@ class OdooConnection:
                 # facturas publicadas del cliente.
                 deuda_total = 0.0
                 try:
+                    invoice_domain = [
+                        ('move_type', '=', 'out_invoice'),
+                        ('partner_id', '=', c['id']),
+                        ('state', '=', 'posted'),
+                        ('amount_residual', '>', 0),
+                    ]
+                    if company_id is not None:
+                        invoice_domain.append(('company_id', '=', company_id))
                     facturas_pendientes = self.models.execute_kw(
                         self.db,
                         self.uid,
                         self.password,
                         'account.move',
                         'search_read',
-                        [[
-                            ('move_type', '=', 'out_invoice'),
-                            ('partner_id', '=', c['id']),
-                            ('state', '=', 'posted'),
-                            ('amount_residual', '>', 0),
-                        ]],
+                        [invoice_domain],
                         {'fields': ['amount_residual']},
                     )
                     deuda_total = sum(
