@@ -19,17 +19,25 @@
         <!-- Búsqueda -->
         <div class="search-container">
             <div class="row g-3">
-                <div class="col-md-4">
+                <div class="{% if mostrar_todo %}col-md-3{% else %}col-md-4{% endif %}">
                     <label class="form-label fw-semibold">Buscar Cliente:</label>
                     <input type="text" class="form-control" id="buscarCliente" placeholder="Nombre del cliente...">
                 </div>
+                {% if mostrar_todo %}
                 <div class="col-md-3">
+                    <label class="form-label fw-semibold">Comercial:</label>
+                    <select id="filtroVendedor" class="form-select">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+                {% endif %}
+                <div class="{% if mostrar_todo %}col-md-2{% else %}col-md-3{% endif %}">
                     <label class="form-label fw-semibold">Provincia:</label>
                     <select id="filtroProvincia" class="form-select">
                         <option value="">Todas</option>
                     </select>
                 </div>
-                <div class="col-md-3">
+                <div class="{% if mostrar_todo %}col-md-2{% else %}col-md-3{% endif %}">
                     <label class="form-label fw-semibold">Ciudad:</label>
                     <select id="filtroCiudad" class="form-select">
                         <option value="">Todas</option>
@@ -63,12 +71,15 @@ function buscarClientes() {
     const nombreCliente = document.getElementById('buscarCliente').value;
     const provinciaId = document.getElementById('filtroProvincia').value;
     const ciudad = document.getElementById('filtroCiudad').value;
+    const vendedorElem = document.getElementById('filtroVendedor');
+    const vendedorId = vendedorElem ? vendedorElem.value : '';
     mostrarLoading();
     const params = new URLSearchParams();
     const limite = 20;
     if (nombreCliente) params.append('nombre', nombreCliente);
     if (provinciaId) params.append('provincia_id', provinciaId);
     if (ciudad) params.append('ciudad', ciudad);
+    if (vendedorId) params.append('vendedor_id', vendedorId);
     params.append('limite', limite);
     fetch(`/api/buscar-clientes?${params.toString()}`)
         .then(response => response.json())
@@ -141,7 +152,12 @@ function cargarProvincias() {
 
 function cargarCiudades() {
     const provinciaId = document.getElementById('filtroProvincia').value;
-    const url = provinciaId ? `/api/ciudades?provincia_id=${provinciaId}` : '/api/ciudades';
+    const vendedorElem = document.getElementById('filtroVendedor');
+    const vendedorId = vendedorElem ? vendedorElem.value : '';
+    const params = new URLSearchParams();
+    if (provinciaId) params.append('provincia_id', provinciaId);
+    if (vendedorId) params.append('vendedor_id', vendedorId);
+    const url = `/api/ciudades${params.toString() ? '?' + params.toString() : ''}`;
     fetch(url)
         .then(r => r.json())
         .then(data => {
@@ -152,6 +168,18 @@ function cargarCiudades() {
         .catch(err => console.error('Error cargando ciudades', err));
 }
 
+function cargarVendedores() {
+    fetch('/api/vendedores')
+        .then(r => r.json())
+        .then(data => {
+            const select = document.getElementById('filtroVendedor');
+            if (!select) return;
+            select.innerHTML = '<option value="">Todos</option>' +
+                data.map(v => `<option value="${v.id}">${v.nombre}</option>`).join('');
+        })
+        .catch(err => console.error('Error cargando vendedores', err));
+}
+
 document.getElementById('filtroProvincia').addEventListener('change', () => {
     cargarCiudades();
     buscarClientes();
@@ -159,9 +187,20 @@ document.getElementById('filtroProvincia').addEventListener('change', () => {
 
 document.getElementById('filtroCiudad').addEventListener('change', buscarClientes);
 
+const vendedorElem = document.getElementById('filtroVendedor');
+if (vendedorElem) {
+    vendedorElem.addEventListener('change', () => {
+        cargarCiudades();
+        buscarClientes();
+    });
+}
+
 // Cargar la lista de clientes al iniciar la página
 document.addEventListener('DOMContentLoaded', () => {
     cargarProvincias();
+    if (document.getElementById('filtroVendedor')) {
+        cargarVendedores();
+    }
     cargarCiudades();
     buscarClientes();
 });

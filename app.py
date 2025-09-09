@@ -142,9 +142,19 @@ def estadistico():
 def clientes():
     if 'user_id' not in session:
         return redirect(url_for('login'))
+    try:
+        odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
+                              session['username'], session['password'])
+        odoo.uid = session['user_id']
+        mostrar_todo = (
+            odoo.has_group('sales_team.group_sale_manager') or
+            odoo.has_group('sales_team.group_sale_salesman_all_leads')
+        )
+    except Exception:
+        mostrar_todo = False
     # La lista de clientes se cargará mediante una solicitud asíncrona
     # para evitar demoras al cargar la página inicial.
-    return render_template('clientes.html', clientes=[])
+    return render_template('clientes.html', clientes=[], mostrar_todo=mostrar_todo)
 
 @app.route('/clientes/<int:cliente_id>')
 def cliente_detalle(cliente_id):
@@ -349,12 +359,32 @@ def api_provincias():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/vendedores')
+def api_vendedores():
+    if 'user_id' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+    try:
+        odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
+                              session['username'], session['password'])
+        odoo.uid = session['user_id']
+        mostrar_todo = (
+            odoo.has_group('sales_team.group_sale_manager') or
+            odoo.has_group('sales_team.group_sale_salesman_all_leads')
+        )
+        if not mostrar_todo:
+            return jsonify([])
+        vendedores = odoo.get_vendedores_especificos()
+        return jsonify(vendedores)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/ciudades')
 def api_ciudades():
     if 'user_id' not in session:
         return jsonify({'error': 'No autorizado'}), 401
 
     provincia_id = request.args.get('provincia_id', type=int)
+    vendedor_id = request.args.get('vendedor_id', type=int)
 
     try:
         odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
@@ -364,9 +394,12 @@ def api_ciudades():
             odoo.has_group('sales_team.group_sale_manager') or
             odoo.has_group('sales_team.group_sale_salesman_all_leads')
         )
+        user_id_param = None if mostrar_todo else session['user_id']
+        if mostrar_todo and vendedor_id:
+            user_id_param = vendedor_id
         ciudades = odoo.get_ciudades(
             state_id=provincia_id,
-            user_id=None if mostrar_todo else session['user_id']
+            user_id=user_id_param
         )
         return jsonify(ciudades)
     except Exception as e:
@@ -381,6 +414,7 @@ def api_buscar_clientes():
     limite = request.args.get('limite', 20)
     provincia_id = request.args.get('provincia_id', type=int)
     ciudad = request.args.get('ciudad', '')
+    vendedor_id = request.args.get('vendedor_id', type=int)
 
     try:
         odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
@@ -391,9 +425,12 @@ def api_buscar_clientes():
             odoo.has_group('sales_team.group_sale_salesman_all_leads')
         )
 
+        user_id_param = None if mostrar_todo else session['user_id']
+        if mostrar_todo and vendedor_id:
+            user_id_param = vendedor_id
         clientes = odoo.buscar_clientes(
             nombre_cliente,
-            user_id=None if mostrar_todo else session['user_id'],
+            user_id=user_id_param,
             limit=int(limite),
             provincia_id=provincia_id,
             ciudad=ciudad
