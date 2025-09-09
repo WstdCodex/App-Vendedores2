@@ -516,7 +516,6 @@ class OdooConnection:
 
             invoice_totals = {}
             if company_id is not None:
-                # Obtener los clientes que tienen facturas en la compañía
                 invoice_domain = [
                     ('move_type', '=', 'out_invoice'),
                     ('state', '=', 'posted'),
@@ -530,19 +529,18 @@ class OdooConnection:
                     'read_group',
                     [invoice_domain, ['amount_residual'], ['partner_id']],
                 )
-                partner_ids = [
-                    d['partner_id'][0]
-                    for d in invoice_data
-                    if d.get('partner_id')
-                ]
                 invoice_totals = {
                     d['partner_id'][0]: d.get('amount_residual', 0.0)
                     for d in invoice_data
                     if d.get('partner_id')
                 }
-                if not partner_ids:
-                    return []
-                domain.append(('id', 'in', partner_ids))
+
+            kwargs = {
+                'fields': ['name', 'credit', 'debit', 'user_id'],
+                'limit': limit,
+            }
+            if company_id is not None:
+                kwargs['context'] = {'force_company': company_id}
 
             # Utilizamos ``search_read`` para obtener los datos de los clientes
             clientes = self.models.execute_kw(
@@ -552,10 +550,7 @@ class OdooConnection:
                 'res.partner',
                 'search_read',
                 [domain],
-                {
-                    'fields': ['name', 'credit', 'debit', 'user_id'],
-                    'limit': 0 if company_id is not None else limit,
-                },
+                kwargs,
             )
 
             print(f"Clientes encontrados: {len(clientes) if clientes else 0}")
