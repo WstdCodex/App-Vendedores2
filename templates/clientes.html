@@ -130,8 +130,11 @@ function actualizarListaClientes(clientes) {
     // Ordenar de mayor a menor deuda antes de renderizar
     clientes.sort((a, b) => b.deuda_total - a.deuda_total);
 
+    const companiaElem = document.getElementById('filtroCompania');
+    const companyId = companiaElem ? companiaElem.value : '';
+
     lista.innerHTML = clientes.map(c => `
-        <a href="/clientes/${c.id}" class="text-decoration-none text-dark">
+        <a href="/clientes/${c.id}${companyId ? `?company_id=${companyId}` : ''}" class="text-decoration-none text-dark">
             <div class="card cliente-card">
                 <div class="card-body">
                     <h5 class="fw-bold text-primary">

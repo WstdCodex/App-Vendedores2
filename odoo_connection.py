@@ -521,6 +521,10 @@ class OdooConnection:
                     ('state', '=', 'posted'),
                     ('company_id', '=', company_id),
                 ]
+                context = {
+                    'force_company': company_id,
+                    'allowed_company_ids': [company_id],
+                }
                 invoice_data = self.models.execute_kw(
                     self.db,
                     self.uid,
@@ -528,6 +532,7 @@ class OdooConnection:
                     'account.move',
                     'read_group',
                     [invoice_domain, ['amount_residual'], ['partner_id']],
+                    {'context': context},
                 )
                 invoice_totals = {
                     d['partner_id'][0]: d.get('amount_residual', 0.0)
@@ -540,7 +545,10 @@ class OdooConnection:
                 'limit': limit,
             }
             if company_id is not None:
-                kwargs['context'] = {'force_company': company_id}
+                kwargs['context'] = {
+                    'force_company': company_id,
+                    'allowed_company_ids': [company_id],
+                }
 
             # Utilizamos ``search_read`` para obtener los datos de los clientes
             clientes = self.models.execute_kw(
@@ -716,9 +724,17 @@ class OdooConnection:
             print(f"Error obteniendo clientes del vendedor: {e}")
             return []
 
-    def get_cliente(self, partner_id):
+    def get_cliente(self, partner_id, company_id=None):
         """Obtener información del cliente"""
         try:
+            kwargs = {
+                'fields': ['name', 'email', 'phone', 'street', 'credit', 'debit', 'user_id']
+            }
+            if company_id is not None:
+                kwargs['context'] = {
+                    'force_company': company_id,
+                    'allowed_company_ids': [company_id],
+                }
             cliente = self.models.execute_kw(
                 self.db,
                 self.uid,
@@ -726,9 +742,7 @@ class OdooConnection:
                 'res.partner',
                 'read',
                 [partner_id],
-                {
-                    'fields': ['name', 'email', 'phone', 'street', 'credit', 'debit', 'user_id']
-                },
+                kwargs,
             )
             if cliente:
                 c = cliente[0]
@@ -736,19 +750,28 @@ class OdooConnection:
                 # facturas publicadas del cliente.
                 deuda_total = 0.0
                 try:
+                    invoice_domain = [
+                        ('move_type', '=', 'out_invoice'),
+                        ('partner_id', '=', c['id']),
+                        ('state', '=', 'posted'),
+                        ('amount_residual', '>', 0),
+                    ]
+                    if company_id is not None:
+                        invoice_domain.append(('company_id', '=', company_id))
+                        context = {
+                            'force_company': company_id,
+                            'allowed_company_ids': [company_id],
+                        }
+                    else:
+                        context = {}
                     facturas_pendientes = self.models.execute_kw(
                         self.db,
                         self.uid,
                         self.password,
                         'account.move',
                         'search_read',
-                        [[
-                            ('move_type', '=', 'out_invoice'),
-                            ('partner_id', '=', c['id']),
-                            ('state', '=', 'posted'),
-                            ('amount_residual', '>', 0),
-                        ]],
-                        {'fields': ['amount_residual']},
+                        [invoice_domain],
+                        {'fields': ['amount_residual'], 'context': context},
                     )
                     deuda_total = sum(
                         f.get('amount_residual', 0.0) for f in facturas_pendientes
