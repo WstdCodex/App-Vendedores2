@@ -224,17 +224,48 @@ class OdooConnection:
                 {'fields': ['name']}
             )
 
+            if not partners:
+                return [], 0.0
+
+            partner_ids = [p['id'] for p in partners]
+            start_date = datetime(year, month, 1).strftime('%Y-%m-%d')
+            end_day = monthrange(year, month)[1]
+            end_date = datetime(year, month, end_day).strftime('%Y-%m-%d')
+
+            invoice_domain = [
+                ('move_type', '=', 'out_invoice'),
+                ('state', '=', 'posted'),
+                ('invoice_date', '>=', start_date),
+                ('invoice_date', '<=', end_date),
+                ('partner_id', 'in', partner_ids),
+            ]
+            if user_id is not None:
+                invoice_domain.append(('invoice_user_id', '=', user_id))
+
+            totals = self.models.execute_kw(
+                self.db, self.uid, self.password,
+                'account.move', 'read_group', [invoice_domain],
+                {
+                    'fields': ['amount_total:sum'],
+                    'groupby': ['partner_id'],
+                    'lazy': False,
+                },
+            )
+
+            totals_dict = {
+                t['partner_id'][0]: t['amount_total_sum']
+                for t in totals if t.get('partner_id')
+            }
+
             resultados = []
             total_general = 0.0
             for p in partners:
-                total_cliente = self.get_total_gasto_cliente_mes(
-                    p['id'], year, month
-                )
+                total_cliente = totals_dict.get(p['id'], 0.0)
                 if total_cliente > 0:
                     resultados.append({
                         'id': p['id'],
                         'nombre': p['name'],
-                        'total_mes': total_cliente
+                        'total_mes': total_cliente,
                     })
                     total_general += total_cliente
 
