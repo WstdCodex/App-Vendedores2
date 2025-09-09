@@ -849,59 +849,58 @@ class OdooConnection:
     def download_invoice_pdf(self, factura_id, username=None, password=None):
         """Descargar el PDF de una factura directamente desde Odoo.
 
-        Parameters
-        ----------
-        factura_id: int
-            Identificador de la factura en Odoo.
-        username: str, optional
-            Usuario para autenticarse en Odoo. Si no se proporciona se
-            usarán las credenciales de la instancia.
-        password: str, optional
-            Contraseña para autenticarse en Odoo.
-
-        Returns
-        -------
-        bytes or None
-            Contenido del PDF si la descarga fue exitosa, en caso
-            contrario ``None``.
+        Intenta primero utilizar el servicio de reportes de Odoo vía
+        XML-RPC; si falla, utiliza un método basado en sesión HTTP como
+        respaldo.
         """
+
+        import base64
+        import xmlrpc.client
+
+
+        login_user = username or self.username
+        login_pass = password or self.password
+
         try:
-            import re
-            import requests
+            uid = self.uid
+            models = self.models
+            if username or password:
+                common = xmlrpc.client.ServerProxy(f"{self.url}/xmlrpc/2/common")
+                uid = common.authenticate(self.db, login_user, login_pass, {})
+                if not uid:
+                    return None
+                models = xmlrpc.client.ServerProxy(f"{self.url}/xmlrpc/2/object")
 
-            login_user = username or self.username
-            login_pass = password or self.password
-            base_url = self.url.rstrip('/')
+            report_names = [
+                'account.report_invoice_with_payments',
+                'account.report_invoice'
+            ]
 
-            session = requests.Session()
 
-            # Obtener el token CSRF desde la página de login
-            login_page = session.get(f"{base_url}/web/login", timeout=30)
-            csrf_token = None
-            match = re.search(r'name="csrf_token" value="(.+?)"', login_page.text)
-            if match:
-                csrf_token = match.group(1)
-
-            login_payload = {
-                'login': login_user,
-                'password': login_pass,
-                'db': self.db,
-            }
-            if csrf_token:
-                login_payload['csrf_token'] = csrf_token
-
-            session.post(f"{base_url}/web/login", data=login_payload, timeout=30)
-            pdf_url = self.get_simple_pdf_url(factura_id)
-            response = session.get(pdf_url, timeout=30)
-
-            if (response.status_code == 200 and
-                    response.headers.get('content-type', '').startswith('application/pdf')):
-                return response.content
-
+            for report_name in report_names:
+                try:
+                    pdf_res = models.execute_kw(
+                        self.db,
+                        uid,
+                        login_pass,
+                        'ir.actions.report',
+                        'render_qweb_pdf',
+                        [report_name, [factura_id]]
+                    )
+                    pdf_content = pdf_res[0]
+                    if isinstance(pdf_content, str):
+                        pdf_content = base64.b64decode(pdf_content)
+                    return pdf_content
+                except Exception:
+                    continue
         except Exception as e:
-            print(f"Error descargando PDF directo: {e}")
+            print(f"Error con render_qweb_pdf: {e}")
 
-        return None
+        return self.download_pdf_with_session(
+            factura_id,
+            username=login_user,
+            password=login_pass
+        )
 
     def download_pdf_with_session(self, factura_id, username=None, password=None):
         """Descargar PDF usando sesión HTTP directa"""
