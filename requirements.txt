@@ -62,8 +62,8 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'tu-clave-secreta-muy-segura-aqui'
     
     # Configuración de Odoo
-    ODOO_URL = os.environ.get('ODOO_URL') or 'http://localhost:8069'
-    ODOO_DB = os.environ.get('ODOO_DB') or 'nombre_de_tu_base_de_datos'
+    ODOO_URL = os.environ.get('ODOO_URL') or 'https://wstd.ar'
+    ODOO_DB = os.environ.get('ODOO_DB') or 'odoo'
     
     # Configuración de Flask
     DEBUG = os.environ.get('FLASK_DEBUG') or False
@@ -71,8 +71,8 @@ class Config:
 # .env (archivo de variables de entorno - ejemplo)
 # Copiar a .env y ajustar valores
 SECRET_KEY=tu-clave-secreta-muy-segura-aqui
-ODOO_URL=http://tu-servidor-odoo:8069
-ODOO_DB=nombre_de_tu_base_de_datos
+ODOO_URL=https://wstd.ar
+ODOO_DB=odoo
 FLASK_DEBUG=True
 
 # run.py (archivo alternativo para ejecutar la aplicación)
@@ -104,8 +104,8 @@ services:
       - "5000:5000"
     environment:
       - FLASK_DEBUG=True
-      - ODOO_URL=http://odoo-server:8069
-      - ODOO_DB=nombre_base_datos
+      - ODOO_URL=https://wstd.ar
+      - ODOO_DB=odoo
     volumes:
       - .:/app
     restart: unless-stopped

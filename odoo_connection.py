@@ -910,7 +910,7 @@ class OdooConnection:
 
             login_user = username or self.username
             login_pass = password or self.password
-            
+
             session = requests.Session()
             base_url = self.url.rstrip('/')
 
