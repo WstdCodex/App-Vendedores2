@@ -408,6 +408,24 @@ class OdooConnection:
             print(f"Error obteniendo ciudades: {e}")
             return []
 
+    def get_vendedores_especificos(self):
+        """Obtener información de vendedores específicos por nombre."""
+        try:
+            nombres = ['DE STEFANO RAFAEL GASTON', 'FERUGLIO LEANDRO EZEQUIEL']
+            usuarios = self.models.execute_kw(
+                self.db,
+                self.uid,
+                self.password,
+                'res.users',
+                'search_read',
+                [[('name', 'in', nombres)]],
+                {'fields': ['name']}
+            )
+            return [{'id': u['id'], 'nombre': u['name']} for u in usuarios]
+        except Exception as e:
+            print(f"Error obteniendo vendedores específicos: {e}")
+            return []
+
     def buscar_clientes(self, nombre_cliente: str = '', user_id: int = None,
                          limit: int = 20, provincia_id: int = None,
                          ciudad: str = ''):
