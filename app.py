@@ -128,9 +128,10 @@ def estadistico():
         clientes, total_filtrado = [], 0.0
 
     selected_month = f"{year:04d}-{month:02d}"
+    total = total_filtrado if (provincia_id or ciudad) else total_general
     return render_template(
         'estadistico.html',
-        total=total_general,
+        total=total,
         mes=selected_month,
         provincias=provincias,
         ciudades=ciudades,
