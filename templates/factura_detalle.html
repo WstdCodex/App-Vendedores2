@@ -120,6 +120,7 @@ document.getElementById('download-pdf').addEventListener('click', async () => {
 
 document.getElementById('share-button').addEventListener('click', async () => {
     try {
+
         if (!downloadedFile) {
             await fetchPdf();
         }
@@ -127,6 +128,7 @@ document.getElementById('share-button').addEventListener('click', async () => {
             await navigator.share({
                 title: 'Factura {{ factura.nombre }}',
                 files: [downloadedFile]
+
             });
         } else {
             throw new Error('Compartir archivos no soportado');
@@ -156,8 +158,10 @@ whatsappShare.href = '#';
 whatsappShare.addEventListener('click', async (e) => {
     e.preventDefault();
     try {
+
         const shared = await shareViaNavigator();
         if (shared) return;
+
     } catch (err) {
         // Si no se puede compartir el archivo, se continúa con el enlace
     }
@@ -168,8 +172,10 @@ const gmailShare = document.getElementById('gmailShare');
 gmailShare.addEventListener('click', async (e) => {
     e.preventDefault();
     try {
+
         const shared = await shareViaNavigator();
         if (shared) return;
+
     } catch (err) {
         // Fallback a mailto con enlace al PDF
     }
@@ -180,8 +186,10 @@ const instagramShare = document.getElementById('instagramShare');
 instagramShare.addEventListener('click', async (e) => {
     e.preventDefault();
     try {
+
         const shared = await shareViaNavigator();
         if (shared) return;
+
     } catch (err) {
         // Fallback al enlace con URL
     }
