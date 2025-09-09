@@ -82,6 +82,7 @@ def estadistico():
     mes = request.args.get('mes')
     provincia_id = request.args.get('provincia_id', type=int)
     ciudad = request.args.get('ciudad', '')
+    vendedor_id = request.args.get('vendedor_id', type=int)
 
     try:
         if mes:
@@ -102,8 +103,15 @@ def estadistico():
             odoo.has_group('sales_team.group_sale_salesman_all_leads')
         )
 
+        if mostrar_todo:
+            vendedores = odoo.get_vendedores_especificos()
+            user_id_param = vendedor_id if vendedor_id else None
+        else:
+            vendedores = []
+            user_id_param = session['user_id']
+
         total_general = odoo.get_total_gastos_mes(
-            None if mostrar_todo else session['user_id'], year, month
+            user_id_param, year, month
         )
 
         provincias = odoo.get_provincias()
@@ -111,18 +119,19 @@ def estadistico():
         if provincia_id:
             ciudades = odoo.get_ciudades(
                 state_id=provincia_id,
-                user_id=None if mostrar_todo else session['user_id']
+                user_id=user_id_param
             )
 
         clientes, total_filtrado = odoo.get_clientes_por_ubicacion_mes(
             year, month, provincia_id=provincia_id, ciudad=ciudad,
-            user_id=None if mostrar_todo else session['user_id']
+            user_id=user_id_param
         )
     except Exception as e:
         flash(f'Error al cargar estadísticas: {str(e)}', 'error')
         total_general = None
-        provincias, ciudades = [], []
+        provincias, ciudades, vendedores = [], [], []
         clientes, total_filtrado = [], 0.0
+        mostrar_todo = False
 
     selected_month = f"{year:04d}-{month:02d}"
     total = total_filtrado if (provincia_id or ciudad) else total_general
@@ -136,6 +145,9 @@ def estadistico():
         ciudad=ciudad,
         clientes=clientes,
         total_filtrado=total_filtrado,
+        mostrar_todo=mostrar_todo,
+        vendedores=vendedores,
+        vendedor_id=vendedor_id,
     )
 
 @app.route('/clientes')
