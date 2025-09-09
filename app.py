@@ -415,6 +415,7 @@ def api_buscar_clientes():
     provincia_id = request.args.get('provincia_id', type=int)
     ciudad = request.args.get('ciudad', '')
     vendedor_id = request.args.get('vendedor_id', type=int)
+    adeudados = request.args.get('adeudados')
 
     try:
         odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
@@ -435,6 +436,9 @@ def api_buscar_clientes():
             provincia_id=provincia_id,
             ciudad=ciudad
         )
+        if adeudados:
+            clientes = [c for c in clientes if c.get('deuda_total', 0) > 0]
+        clientes.sort(key=lambda c: c.get('deuda_total', 0), reverse=True)
         return jsonify(clientes)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
