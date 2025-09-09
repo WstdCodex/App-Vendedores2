@@ -15,11 +15,22 @@
         <div class="card">
             <div class="card-body">
                 <form method="get" class="row g-3 align-items-end">
-                    <div class="col-md-3">
+                    <div class="{% if mostrar_todo %}col-md-2{% else %}col-md-3{% endif %}">
                         <label class="form-label fw-semibold">Mes:</label>
                         <input type="month" name="mes" class="form-control" value="{{ mes }}">
                     </div>
+                    {% if mostrar_todo %}
                     <div class="col-md-3">
+                        <label class="form-label fw-semibold">Comercial:</label>
+                        <select name="vendedor_id" class="form-select" onchange="this.form.submit()">
+                            <option value="">Todos</option>
+                            {% for v in vendedores %}
+                            <option value="{{ v.id }}" {% if v.id == vendedor_id %}selected{% endif %}>{{ v.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+                    <div class="{% if mostrar_todo %}col-md-2{% else %}col-md-3{% endif %}">
                         <label class="form-label fw-semibold">Provincia:</label>
                         <select name="provincia_id" class="form-select" onchange="this.form.submit()">
                             <option value="">Todas</option>
@@ -28,7 +39,7 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="col-md-3">
+                    <div class="{% if mostrar_todo %}col-md-2{% else %}col-md-3{% endif %}">
                         <label class="form-label fw-semibold">Ciudad:</label>
                         <select name="ciudad" class="form-select" onchange="this.form.submit()">
                             <option value="">Todas</option>
