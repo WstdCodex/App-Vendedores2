@@ -18,7 +18,7 @@
             <div class="card-body">
                 <p class="mb-1"><strong>Cliente:</strong> {{ factura.cliente }}</p>
                 <p class="mb-1"><strong>Fecha:</strong> {{ factura.fecha }}</p>
-                <p class="mb-1"><strong>Total:</strong> ${{ factura.total|format_currency }}</p>
+                <p class="mb-1"><strong>Total con impuestos:</strong> ${{ factura.total|format_currency }}</p>
                 <button type="button" class="btn btn-primary mt-3" id="download-pdf">
                     <i class="fas fa-download me-2"></i>Descargar PDF
                 </button>

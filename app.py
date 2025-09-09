@@ -325,7 +325,7 @@ def descargar_factura_pdf(factura_id):
         y -= 15
         p.drawString(50, y, f"Perc IIBB ARBA: ${factura['perc_iibb_arba']:.2f}")
         y -= 15
-        p.drawString(50, y, f"Total: ${factura['total']:.2f}")
+        p.drawString(50, y, f"Total con impuestos: ${factura['total']:.2f}")
         y -= 15
         p.drawString(50, y, f"Importe adeudado: ${factura['amount_residual']:.2f}")
         y -= 15
