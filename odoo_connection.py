@@ -516,7 +516,6 @@ class OdooConnection:
 
             invoice_totals = {}
             if company_id is not None:
-                # Obtener los clientes que tienen facturas en la compañía
                 invoice_domain = [
                     ('move_type', '=', 'out_invoice'),
                     ('state', '=', 'posted'),
@@ -530,19 +529,18 @@ class OdooConnection:
                     'read_group',
                     [invoice_domain, ['amount_residual'], ['partner_id']],
                 )
-                partner_ids = [
-                    d['partner_id'][0]
-                    for d in invoice_data
-                    if d.get('partner_id')
-                ]
                 invoice_totals = {
                     d['partner_id'][0]: d.get('amount_residual', 0.0)
                     for d in invoice_data
                     if d.get('partner_id')
                 }
-                if not partner_ids:
-                    return []
-                domain.append(('id', 'in', partner_ids))
+
+            kwargs = {
+                'fields': ['name', 'user_id'],
+                'limit': limit,
+            }
+            if company_id is not None:
+                kwargs['context'] = {'force_company': company_id}
 
             # Utilizamos ``search_read`` para obtener los datos de los clientes
             clientes = self.models.execute_kw(
@@ -552,10 +550,7 @@ class OdooConnection:
                 'res.partner',
                 'search_read',
                 [domain],
-                {
-                    'fields': ['name', 'credit', 'debit', 'user_id'],
-                    'limit': 0 if company_id is not None else limit,
-                },
+                kwargs,
             )
 
             print(f"Clientes encontrados: {len(clientes) if clientes else 0}")
@@ -563,9 +558,10 @@ class OdooConnection:
             if not clientes:
                 return []
 
+            partner_ids = [c['id'] for c in clientes]
+
             # Si no filtramos por compañía, calculamos las deudas en una sola llamada
             if company_id is None:
-                partner_ids = [c['id'] for c in clientes]
                 invoice_domain = [
                     ('move_type', '=', 'out_invoice'),
                     ('state', '=', 'posted'),
@@ -585,6 +581,28 @@ class OdooConnection:
                     if d.get('partner_id')
                 }
 
+            # Calcular saldo a favor por compañía
+            balance_domain = [
+                ('partner_id', 'in', partner_ids),
+                ('account_id.internal_type', '=', 'receivable'),
+                ('parent_state', '=', 'posted'),
+            ]
+            if company_id is not None:
+                balance_domain.append(('company_id', '=', company_id))
+            balance_data = self.models.execute_kw(
+                self.db,
+                self.uid,
+                self.password,
+                'account.move.line',
+                'read_group',
+                [balance_domain, ['debit', 'credit'], ['partner_id']],
+            )
+            saldo_favor_totals = {
+                d['partner_id'][0]: max(d.get('credit', 0.0) - d.get('debit', 0.0), 0.0)
+                for d in balance_data
+                if d.get('partner_id')
+            }
+
             clientes_formateados = []
             for c in clientes:
                 cliente_user_id = c.get('user_id')
@@ -603,9 +621,7 @@ class OdooConnection:
                     continue
 
                 deuda_total = invoice_totals.get(c['id'], 0.0)
-                credito = c.get('credit', 0.0)
-                debito = c.get('debit', 0.0)
-                saldo_favor = max(credito - debito, 0.0)
+                saldo_favor = saldo_favor_totals.get(c['id'], 0.0)
                 clientes_formateados.append(
                     {
                         'id': c['id'],
