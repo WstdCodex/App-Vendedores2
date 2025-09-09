@@ -536,7 +536,9 @@ class OdooConnection:
                 }
 
             kwargs = {
+
                 'fields': ['name', 'user_id'],
+
                 'limit': limit,
             }
             if company_id is not None:
