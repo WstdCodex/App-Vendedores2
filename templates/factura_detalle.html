@@ -96,6 +96,7 @@ document.getElementById('download-pdf').addEventListener('click', async () => {
 
 document.getElementById('share-button').addEventListener('click', async () => {
     try {
+
         if (!downloadedFile) {
             await fetchPdf();
         }
@@ -109,9 +110,12 @@ document.getElementById('share-button').addEventListener('click', async () => {
         }
     } catch (e) {
         alert('Este navegador no soporta compartir archivos. Por favor, descargue el PDF y compártalo manualmente.');
+
     }
 });
+
 document.getElementById('print-button').addEventListener('click', function() {
+
     const printWindow = window.open(pdfUrl, '_blank');
     if (printWindow) {
         printWindow.addEventListener('load', function() {
