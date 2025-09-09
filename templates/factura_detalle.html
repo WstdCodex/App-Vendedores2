@@ -92,12 +92,19 @@
 {% set pdf_url = url_for('descargar_factura_pdf', factura_id=factura.id, _external=True) %}
 <script>
 const pdfUrl = '{{ pdf_url }}';
+let downloadedFile = null;
+
+async function fetchPdf() {
+    const response = await fetch(pdfUrl, { credentials: 'include' });
+    if (!response.ok) throw new Error('No se pudo obtener el PDF');
+    const blob = await response.blob();
+    downloadedFile = new File([blob], 'factura_{{ factura.id }}.pdf', { type: 'application/pdf' });
+    return blob;
+}
+
 document.getElementById('download-pdf').addEventListener('click', async () => {
     try {
-        const response = await fetch(pdfUrl, { credentials: 'include' });
-        if (!response.ok) throw new Error('No se pudo obtener el PDF');
-
-        const blob = await response.blob();
+        const blob = await fetchPdf();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -110,60 +117,76 @@ document.getElementById('download-pdf').addEventListener('click', async () => {
         console.error(err);
     }
 });
+
 document.getElementById('share-button').addEventListener('click', async () => {
     try {
-        const response = await fetch(pdfUrl, { credentials: 'include' });
-        if (!response.ok) throw new Error('No se pudo obtener el PDF');
-
-        const blob = await response.blob();
-        const file = new File([blob], 'factura_{{ factura.id }}.pdf', {
-            type: 'application/pdf'
-        });
-
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        if (!downloadedFile) {
+            await fetchPdf();
+        }
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [downloadedFile] })) {
             await navigator.share({
                 title: 'Factura {{ factura.nombre }}',
-                text: 'Factura {{ factura.nombre }} - Total ${{ factura.total|format_currency }}',
-                files: [file]
+                files: [downloadedFile]
             });
-            return;
+        } else {
+            throw new Error('Compartir archivos no soportado');
         }
-        throw new Error('Web Share API no soportado');
     } catch (e) {
         const modal = new bootstrap.Modal(document.getElementById('shareModal'));
         modal.show();
     }
 });
 
+async function shareViaNavigator() {
+    if (!downloadedFile) {
+        await fetchPdf();
+    }
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [downloadedFile] })) {
+        await navigator.share({
+            title: 'Factura {{ factura.nombre }}',
+            files: [downloadedFile]
+        });
+        return true;
+    }
+    return false;
+}
 
 const whatsappShare = document.getElementById('whatsappShare');
-whatsappShare.href = `https://wa.me/?text=${encodeURIComponent(pdfUrl)}`;
+whatsappShare.href = '#';
 whatsappShare.addEventListener('click', async (e) => {
     e.preventDefault();
     try {
-        const response = await fetch(pdfUrl, { credentials: 'include' });
-        if (!response.ok) throw new Error('No se pudo obtener el PDF');
-
-        const blob = await response.blob();
-        const file = new File([blob], 'factura_{{ factura.id }}.pdf', {
-            type: 'application/pdf'
-        });
-
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({
-                title: 'Factura {{ factura.nombre }}',
-                files: [file]
-            });
-            return;
-        }
+        const shared = await shareViaNavigator();
+        if (shared) return;
     } catch (err) {
-        // Si no se puede compartir el archivo, se sigue con el enlace
+        // Si no se puede compartir el archivo, se continúa con el enlace
     }
     window.open(`https://wa.me/?text=${encodeURIComponent(pdfUrl)}`, '_blank');
 });
 
-document.getElementById('gmailShare').href = `mailto:?subject=${encodeURIComponent('Factura ' + '{{ factura.nombre }}')}&body=${encodeURIComponent(pdfUrl)}`;
-document.getElementById('instagramShare').href = `https://www.instagram.com/?url=${encodeURIComponent(pdfUrl)}`;
+const gmailShare = document.getElementById('gmailShare');
+gmailShare.addEventListener('click', async (e) => {
+    e.preventDefault();
+    try {
+        const shared = await shareViaNavigator();
+        if (shared) return;
+    } catch (err) {
+        // Fallback a mailto con enlace al PDF
+    }
+    window.open(`mailto:?subject=${encodeURIComponent('Factura ' + '{{ factura.nombre }}')}&body=${encodeURIComponent(pdfUrl)}`, '_blank');
+});
+
+const instagramShare = document.getElementById('instagramShare');
+instagramShare.addEventListener('click', async (e) => {
+    e.preventDefault();
+    try {
+        const shared = await shareViaNavigator();
+        if (shared) return;
+    } catch (err) {
+        // Fallback al enlace con URL
+    }
+    window.open(`https://www.instagram.com/?url=${encodeURIComponent(pdfUrl)}`, '_blank');
+});
 
 document.getElementById('printButton').addEventListener('click', function() {
     const printWindow = window.open(pdfUrl, '_blank');
