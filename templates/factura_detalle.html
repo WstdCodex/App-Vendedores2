@@ -96,20 +96,28 @@ document.getElementById('download-pdf').addEventListener('click', async () => {
 
 document.getElementById('share-button').addEventListener('click', async () => {
     try {
-
-        if (!downloadedFile) {
-            await fetchPdf();
-        }
-        if (navigator.share && navigator.canShare && navigator.canShare({ files: [downloadedFile] })) {
+        if (navigator.share) {
+            if (navigator.canShare) {
+                if (!downloadedFile) {
+                    await fetchPdf();
+                }
+                if (navigator.canShare({ files: [downloadedFile] })) {
+                    await navigator.share({
+                        title: 'Factura {{ factura.nombre }}',
+                        files: [downloadedFile]
+                    });
+                    return;
+                }
+            }
             await navigator.share({
                 title: 'Factura {{ factura.nombre }}',
-                files: [downloadedFile]
+                url: pdfUrl
             });
         } else {
             throw new Error('Compartir archivos no soportado');
         }
     } catch (e) {
-        alert('Este navegador no soporta compartir archivos. Por favor, descargue el PDF y compártalo manualmente.');
+        alert('Este navegador no soporta la función de compartir. Por favor, descargue el PDF y compártalo manualmente.');
 
     }
 });
