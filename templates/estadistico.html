@@ -52,7 +52,13 @@
 
                 {% if clientes %}
                 <div class="mt-4">
-                    <h5 class="fw-bold">Clientes en la ubicación seleccionada</h5>
+                    <h5 class="fw-bold">
+                        {% if provincia_id or ciudad %}
+                            Clientes en la ubicación seleccionada
+                        {% else %}
+                            Clientes que facturaron en el mes
+                        {% endif %}
+                    </h5>
                     <div class="table-responsive">
                         <table class="table table-striped">
                             <thead>
@@ -64,7 +70,7 @@
                             <tbody>
                                 {% for c in clientes %}
                                 <tr>
-                                    <td>{{ c.nombre }}</td>
+                                    <td><a href="{{ url_for('cliente_detalle', cliente_id=c.id, mes=mes, return_url=request.full_path) }}">{{ c.nombre }}</a></td>
                                     <td class="text-end">$ {{ c.total_mes|format_currency }}</td>
                                 </tr>
                                 {% endfor %}
@@ -72,7 +78,11 @@
                         </table>
                     </div>
                     <div class="text-end fw-bold">
-                        Total ubicación: $ {{ total_filtrado|format_currency }}
+                        {% if provincia_id or ciudad %}
+                            Total ubicación: $ {{ total_filtrado|format_currency }}
+                        {% else %}
+                            Total mes: $ {{ total_filtrado|format_currency }}
+                        {% endif %}
                     </div>
                 </div>
                 {% endif %}

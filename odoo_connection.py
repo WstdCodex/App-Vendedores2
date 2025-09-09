@@ -735,6 +735,62 @@ class OdooConnection:
             print(f"Error obteniendo facturas del cliente: {e}")
             return []
 
+    def get_facturas_cliente_mes(self, partner_id, year, month,
+                                 codigo_factura='', estado_filtro=''):
+        """Obtener facturas publicadas de un cliente en un mes específico."""
+        try:
+            start_date = datetime(year, month, 1).strftime('%Y-%m-%d')
+            end_day = monthrange(year, month)[1]
+            end_date = datetime(year, month, end_day).strftime('%Y-%m-%d')
+            domain = [
+                ('move_type', '=', 'out_invoice'),
+                ('partner_id', '=', partner_id),
+                ('state', '=', 'posted'),
+                ('invoice_date', '>=', start_date),
+                ('invoice_date', '<=', end_date),
+            ]
+            if codigo_factura:
+                domain.append(('name', 'ilike', codigo_factura))
+
+            facturas_ids = self.models.execute_kw(
+                self.db, self.uid, self.password,
+                'account.move', 'search', [domain]
+            )
+            if not facturas_ids:
+                return []
+
+            facturas = self.models.execute_kw(
+                self.db, self.uid, self.password,
+                'account.move', 'read',
+                [facturas_ids],
+                {
+                    'fields': [
+                        'name', 'invoice_date', 'amount_total', 'amount_residual',
+                        'payment_state'
+                    ]
+                }
+            )
+
+            facturas_formateadas = []
+            for factura in facturas:
+                estado_pago = self._get_payment_state(factura)
+                if estado_filtro and estado_pago != estado_filtro:
+                    continue
+                facturas_formateadas.append({
+                    'id': factura['id'],
+                    'nombre': factura['name'],
+                    'fecha': self._format_date(factura.get('invoice_date')),
+                    'total': factura['amount_total'],
+                    'pendiente': factura['amount_residual'],
+                    'estado': estado_pago,
+                    'estado_texto': self.get_estado_texto(estado_pago),
+                    'estado_color': self.get_estado_color(estado_pago)
+                })
+            return facturas_formateadas
+        except Exception as e:
+            print(f"Error obteniendo facturas del cliente en el mes: {e}")
+            return []
+
     def get_factura(self, factura_id):
         """Obtener los detalles de una factura específica"""
         try:
