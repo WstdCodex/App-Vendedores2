@@ -234,28 +234,40 @@ class OdooConnection:
     def get_total_gasto_cliente(self, partner_id, company_id=None):
         """Obtener el total efectivamente abonado por un cliente.
 
-        Suma todos los pagos registrados para el cliente, incluyendo pagos
-        parciales de facturas. Solo se consideran los pagos en estado
-        ``posted``. Si se especifica ``company_id`` se filtra por compañía.
+        Calcula el total pagado a partir de las facturas del cliente
+        tomando ``amount_total - amount_residual`` para cada factura en
+        estado ``posted``. Este método evita consultar el modelo
+        ``account.payment``, que puede estar restringido para usuarios
+        comerciales.
         """
         try:
             domain = [
+                ('move_type', '=', 'out_invoice'),
                 ('partner_id', '=', partner_id),
                 ('state', '=', 'posted'),
-                ('payment_type', '=', 'inbound'),
             ]
             if company_id is not None:
                 domain.append(('company_id', '=', company_id))
-            pagos = self.models.execute_kw(
-                self.db,
-                self.uid,
-                self.password,
-                'account.payment',
-                'search_read',
-                [domain],
-                {'fields': ['amount']},
+            facturas_ids = self.models.execute_kw(
+                self.db, self.uid, self.password,
+                'account.move', 'search', [domain]
             )
-            return sum(p.get('amount', 0.0) or 0.0 for p in pagos)
+            if not facturas_ids:
+                return 0.0
+            facturas = self.models.execute_kw(
+                self.db, self.uid, self.password,
+                'account.move', 'read',
+                [facturas_ids], {'fields': ['amount_total', 'amount_residual']}
+            )
+            total = 0.0
+            for f in facturas:
+                monto = f.get('amount_total', 0.0) or 0.0
+                pendiente = f.get('amount_residual', 0.0) or 0.0
+                pagado = monto - pendiente
+                if pagado < 0:
+                    pagado = 0.0
+                total += pagado
+            return total
         except Exception as e:
             print(f"Error obteniendo gasto total del cliente: {e}")
             return 0.0
