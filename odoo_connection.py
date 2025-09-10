@@ -206,6 +206,7 @@ class OdooConnection:
                 self.db, self.uid, self.password,
                 'account.move', 'read',
                 [facturas_ids], {'fields': ['amount_total', 'amount_residual']}
+
             )
             total = 0.0
             for f in facturas:
@@ -217,7 +218,7 @@ class OdooConnection:
                 total += pagado
             return total
         except Exception as e:
-            print(f"Error obteniendo gasto mensual del cliente: {e}")
+            print(f"Error obteniendo gasto total del cliente: {e}")
             return 0.0
 
     def get_total_gasto_cliente(self, partner_id, company_id=None):

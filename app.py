@@ -200,6 +200,7 @@ def cliente_detalle(cliente_id):
             except ValueError:
                 # Si el parámetro es inválido, se muestran todas las facturas
                 facturas = odoo.get_facturas_cliente(cliente_id)
+
                 now = datetime.now()
                 year, month = now.year, now.month
                 mes_param = ''
@@ -208,7 +209,9 @@ def cliente_detalle(cliente_id):
             now = datetime.now()
             year, month = now.year, now.month
 
+
         total_gastado = odoo.get_total_gasto_cliente(cliente_id, company_id=company_id)
+
 
         return render_template('cliente_detalle.html', cliente=cliente_info,
                                facturas=facturas, total_gastado=total_gastado,
