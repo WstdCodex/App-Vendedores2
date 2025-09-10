@@ -614,10 +614,13 @@ class OdooConnection:
 
             print(f"Buscando clientes con dominio: {domain}")
 
+            # Si ``limit`` es 0 o None no se establece límite para obtener
+            # todos los clientes y luego poder ordenarlos externamente
             kwargs = {
                 'fields': ['name', 'user_id'],
-                'limit': limit,
             }
+            if limit and limit > 0:
+                kwargs['limit'] = limit
             if company_id is not None:
                 kwargs['context'] = {
                     'force_company': company_id,
