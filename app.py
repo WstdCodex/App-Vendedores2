@@ -84,6 +84,7 @@ def estadistico():
     ciudad = request.args.get('ciudad', '')
     vendedor_id = request.args.get('vendedor_id', type=int)
     company_id = request.args.get('company_id', type=int)
+    mes = request.args.get('mes')
 
     try:
         if mes:
@@ -185,6 +186,7 @@ def cliente_detalle(cliente_id):
     mes_param = request.args.get('mes')
     return_url = request.args.get('return_url')
     company_id = request.args.get('company_id', type=int)
+    mes = request.args.get('mes')
 
     try:
         odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
@@ -234,6 +236,7 @@ def factura_detalle(cliente_id, factura_id):
         return redirect(url_for('login'))
 
     company_id = request.args.get('company_id', type=int)
+    mes = request.args.get('mes')
 
     try:
         odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
@@ -243,12 +246,12 @@ def factura_detalle(cliente_id, factura_id):
         factura = odoo.get_factura(factura_id)
         if not factura:
             flash('Factura no encontrada', 'error')
-            return redirect(url_for('cliente_detalle', cliente_id=cliente_id, company_id=company_id))
+            return redirect(url_for('cliente_detalle', cliente_id=cliente_id, company_id=company_id, mes=mes))
 
-        return render_template('factura_detalle.html', factura=factura, cliente_id=cliente_id, company_id=company_id)
+        return render_template('factura_detalle.html', factura=factura, cliente_id=cliente_id, company_id=company_id, mes=mes)
     except Exception as e:
         flash(f'Error al cargar factura: {str(e)}', 'error')
-        return redirect(url_for('cliente_detalle', cliente_id=cliente_id, company_id=company_id))
+        return redirect(url_for('cliente_detalle', cliente_id=cliente_id, company_id=company_id, mes=mes))
 
 @app.route('/facturas/<int:factura_id>/pdf')
 def descargar_factura_pdf(factura_id):
