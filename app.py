@@ -437,7 +437,7 @@ def api_buscar_clientes():
         return jsonify({'error': 'No autorizado'}), 401
 
     nombre_cliente = request.args.get('nombre', '')
-    limite = request.args.get('limite', 20)
+    limite = request.args.get('limite', default=20, type=int)
     provincia_id = request.args.get('provincia_id', type=int)
     ciudad = request.args.get('ciudad', '')
     vendedor_id = request.args.get('vendedor_id', type=int)
@@ -459,7 +459,7 @@ def api_buscar_clientes():
         clientes = odoo.buscar_clientes(
             nombre_cliente,
             user_id=user_id_param,
-            limit=int(limite),
+            limit=0,
             provincia_id=provincia_id,
             ciudad=ciudad,
             company_id=company_id,
@@ -467,6 +467,8 @@ def api_buscar_clientes():
         if adeudados:
             clientes = [c for c in clientes if c.get('deuda_total', 0) > 0]
         clientes.sort(key=lambda c: c.get('deuda_total', 0), reverse=True)
+        if limite and limite > 0:
+            clientes = clientes[:limite]
         return jsonify(clientes)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
