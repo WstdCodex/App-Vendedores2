@@ -182,8 +182,6 @@ class OdooConnection:
                 monto = f.get('amount_total', 0.0) or 0.0
                 pendiente = f.get('amount_residual', 0.0) or 0.0
                 pagado = monto - pendiente
-                if pagado < 0:
-                    pagado = 0.0
                 total += pagado
             return total
         except Exception as e:
@@ -200,7 +198,7 @@ class OdooConnection:
             end_day = monthrange(year, month)[1]
             end_date = datetime(year, month, end_day).strftime('%Y-%m-%d')
             domain = [
-                ('move_type', '=', 'out_invoice'),
+                ('move_type', 'in', ['out_invoice', 'out_refund']),
                 ('partner_id', '=', partner_id),
                 ('state', '=', 'posted'),
                 ('invoice_date', '>=', start_date),
@@ -225,8 +223,6 @@ class OdooConnection:
                 monto = f.get('amount_total', 0.0) or 0.0
                 pendiente = f.get('amount_residual', 0.0) or 0.0
                 pagado = monto - pendiente
-                if pagado < 0:
-                    pagado = 0.0
                 total += pagado
             return total
         except Exception as e:
@@ -244,7 +240,7 @@ class OdooConnection:
         """
         try:
             domain = [
-                ('move_type', '=', 'out_invoice'),
+                ('move_type', 'in', ['out_invoice', 'out_refund']),
                 ('partner_id', '=', partner_id),
                 ('state', '=', 'posted'),
             ]
@@ -266,8 +262,6 @@ class OdooConnection:
                 monto = f.get('amount_total', 0.0) or 0.0
                 pendiente = f.get('amount_residual', 0.0) or 0.0
                 pagado = monto - pendiente
-                if pagado < 0:
-                    pagado = 0.0
                 total += pagado
             return total
         except Exception as e:
@@ -824,7 +818,7 @@ class OdooConnection:
         """Obtener facturas publicadas de un cliente con filtros"""
         try:
             domain = [
-                ('move_type', '=', 'out_invoice'),
+                ('move_type', 'in', ['out_invoice', 'out_refund']),
                 ('partner_id', '=', partner_id),
                 ('state', '=', 'posted')
             ]
@@ -880,7 +874,7 @@ class OdooConnection:
             end_day = monthrange(year, month)[1]
             end_date = datetime(year, month, end_day).strftime('%Y-%m-%d')
             domain = [
-                ('move_type', '=', 'out_invoice'),
+                ('move_type', 'in', ['out_invoice', 'out_refund']),
                 ('partner_id', '=', partner_id),
                 ('state', '=', 'posted'),
                 ('invoice_date', '>=', start_date),
