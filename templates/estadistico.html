@@ -90,7 +90,7 @@
                             <tbody>
                                 {% for c in clientes %}
                                 <tr>
-                                    <td><a href="{{ url_for('cliente_detalle', cliente_id=c.id, mes=mes, return_url=request.full_path, company_id=company_id) }}">{{ c.nombre }}</a></td>
+                                    <td><a href="{{ url_for('cliente_detalle', cliente_id=c.id, mes=mes, return_url=request.full_path) }}">{{ c.nombre }}</a></td>
                                     <td class="text-end">$ {{ c.total_mes|format_currency }}</td>
                                 </tr>
                                 {% endfor %}
