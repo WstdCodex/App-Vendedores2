@@ -190,7 +190,7 @@ class OdooConnection:
             print(f"Error obteniendo total mensual: {e}")
             return 0.0
 
-    def get_total_gasto_cliente_mes(self, partner_id, year, month):
+    def get_total_gasto_cliente_mes(self, partner_id, year, month, company_id=None):
         """Obtener el total pagado por un cliente en un mes específico.
 
         Incluye los montos abonados de manera parcial en cada factura.
@@ -206,6 +206,8 @@ class OdooConnection:
                 ('invoice_date', '>=', start_date),
                 ('invoice_date', '<=', end_date),
             ]
+            if company_id is not None:
+                domain.append(('company_id', '=', company_id))
             facturas_ids = self.models.execute_kw(
                 self.db, self.uid, self.password,
                 'account.move', 'search', [domain]
