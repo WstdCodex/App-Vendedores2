@@ -109,7 +109,7 @@
                                 {% for factura in facturas %}
                                 <tr>
                                     <td class="fw-bold">
-                                        <a href="{{ url_for('factura_detalle', cliente_id=cliente.id, factura_id=factura.id) }}" class="text-decoration-none">
+                                        <a href="{{ url_for('factura_detalle', cliente_id=cliente.id, factura_id=factura.id, company_id=company_id) }}" class="text-decoration-none">
                                             {{ factura.nombre }}
                                         </a>
                                     </td>
@@ -123,7 +123,7 @@
                                 <tr>
                                     <td colspan="5" class="text-center text-muted py-4">
                                         <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
-                                        No se encontraron facturas
+                                        No hay facturas
                                     </td>
                                 </tr>
                             {% endif %}
@@ -140,6 +140,7 @@
 <script>
 const CLIENTE_ID = {{ cliente.id }};
 const MES = "{{ mes or '' }}";
+const COMPANY_ID = {{ company_id if company_id is not none else 'null' }};
 function buscarFacturasCliente() {
     const codigoFactura = document.getElementById('buscarFactura').value;
     const estadoFiltro = document.getElementById('filtroEstado').value;
@@ -148,6 +149,7 @@ function buscarFacturasCliente() {
     if (codigoFactura) params.append('codigo', codigoFactura);
     if (estadoFiltro) params.append('estado', estadoFiltro);
     if (MES) params.append('mes', MES);
+    if (COMPANY_ID) params.append('company_id', COMPANY_ID);
     fetch(`/api/cliente/${CLIENTE_ID}/facturas?${params.toString()}`)
         .then(response => response.json())
         .then(data => {
@@ -177,7 +179,7 @@ function actualizarTablaFacturas(facturas) {
 
     tbody.innerHTML = facturas.map(factura => `
         <tr>
-            <td class="fw-bold"><a href="/clientes/${CLIENTE_ID}/factura/${factura.id}" class="text-decoration-none">${factura.nombre}</a></td>
+            <td class="fw-bold"><a href="/clientes/${CLIENTE_ID}/factura/${factura.id}${COMPANY_ID ? `?company_id=${COMPANY_ID}` : ''}" class="text-decoration-none">${factura.nombre}</a></td>
             <td>${factura.fecha}</td>
             <td class="fw-semibold text-success">${factura.total.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             <td class="fw-semibold text-warning">${factura.pendiente.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>

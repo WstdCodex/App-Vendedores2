@@ -196,24 +196,32 @@ def cliente_detalle(cliente_id):
         if mes_param:
             try:
                 year, month = map(int, mes_param.split('-'))
-                facturas = odoo.get_facturas_cliente_mes(cliente_id, year, month)
+                facturas = odoo.get_facturas_cliente_mes(
+                    cliente_id, year, month, company_id=company_id
+                )
             except ValueError:
                 # Si el parámetro es inválido, se muestran todas las facturas
-                facturas = odoo.get_facturas_cliente(cliente_id)
+                facturas = odoo.get_facturas_cliente(cliente_id, company_id=company_id)
 
                 now = datetime.now()
                 year, month = now.year, now.month
                 mes_param = ''
         else:
-            facturas = odoo.get_facturas_cliente(cliente_id)
+            facturas = odoo.get_facturas_cliente(cliente_id, company_id=company_id)
             now = datetime.now()
             year, month = now.year, now.month
 
         total_gastado = odoo.get_total_gasto_cliente(cliente_id, company_id=company_id)
 
-        return render_template('cliente_detalle.html', cliente=cliente_info,
-                               facturas=facturas, total_gastado=total_gastado,
-                               mes=mes_param or '', return_url=return_url)
+        return render_template(
+            'cliente_detalle.html',
+            cliente=cliente_info,
+            facturas=facturas,
+            total_gastado=total_gastado,
+            mes=mes_param or '',
+            return_url=return_url,
+            company_id=company_id,
+        )
     except Exception as e:
         flash(f'Error al cargar cliente: {str(e)}', 'error')
         if return_url:
@@ -225,6 +233,8 @@ def factura_detalle(cliente_id, factura_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
+    company_id = request.args.get('company_id', type=int)
+
     try:
         odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
                               session['username'], session['password'])
@@ -233,12 +243,12 @@ def factura_detalle(cliente_id, factura_id):
         factura = odoo.get_factura(factura_id)
         if not factura:
             flash('Factura no encontrada', 'error')
-            return redirect(url_for('cliente_detalle', cliente_id=cliente_id))
+            return redirect(url_for('cliente_detalle', cliente_id=cliente_id, company_id=company_id))
 
-        return render_template('factura_detalle.html', factura=factura, cliente_id=cliente_id)
+        return render_template('factura_detalle.html', factura=factura, cliente_id=cliente_id, company_id=company_id)
     except Exception as e:
         flash(f'Error al cargar factura: {str(e)}', 'error')
-        return redirect(url_for('cliente_detalle', cliente_id=cliente_id))
+        return redirect(url_for('cliente_detalle', cliente_id=cliente_id, company_id=company_id))
 
 @app.route('/facturas/<int:factura_id>/pdf')
 def descargar_factura_pdf(factura_id):
@@ -481,6 +491,7 @@ def api_facturas_cliente(cliente_id):
     codigo_factura = request.args.get('codigo', '')
     estado_filtro = request.args.get('estado', '')
     mes = request.args.get('mes')
+    company_id = request.args.get('company_id', type=int)
 
     try:
         odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
@@ -490,15 +501,15 @@ def api_facturas_cliente(cliente_id):
             try:
                 year, month = map(int, mes.split('-'))
                 facturas = odoo.get_facturas_cliente_mes(
-                    cliente_id, year, month, codigo_factura, estado_filtro
+                    cliente_id, year, month, codigo_factura, estado_filtro, company_id=company_id
                 )
             except ValueError:
                 facturas = odoo.get_facturas_cliente(
-                    cliente_id, codigo_factura, estado_filtro
+                    cliente_id, codigo_factura, estado_filtro, company_id=company_id
                 )
         else:
             facturas = odoo.get_facturas_cliente(
-                cliente_id, codigo_factura, estado_filtro
+                cliente_id, codigo_factura, estado_filtro, company_id=company_id
             )
         return jsonify(facturas)
     except Exception as e:
