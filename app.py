@@ -84,6 +84,7 @@ def estadistico():
     ciudad = request.args.get('ciudad', '')
     vendedor_id = request.args.get('vendedor_id', type=int)
     company_id = request.args.get('company_id', type=int)
+    mes = request.args.get('mes')
 
     try:
         if mes:
@@ -199,19 +200,24 @@ def cliente_detalle(cliente_id):
                 facturas = odoo.get_facturas_cliente_mes(
                     cliente_id, year, month, company_id=company_id
                 )
+                total_gastado = odoo.get_total_gasto_cliente_mes(
+                    cliente_id, year, month, company_id=company_id
+                )
             except ValueError:
-                # Si el parámetro es inválido, se muestran todas las facturas
-                facturas = odoo.get_facturas_cliente(cliente_id, company_id=company_id)
-
-                now = datetime.now()
-                year, month = now.year, now.month
+                facturas = odoo.get_facturas_cliente(
+                    cliente_id, company_id=company_id
+                )
+                total_gastado = odoo.get_total_gasto_cliente(
+                    cliente_id, company_id=company_id
+                )
                 mes_param = ''
         else:
-            facturas = odoo.get_facturas_cliente(cliente_id, company_id=company_id)
-            now = datetime.now()
-            year, month = now.year, now.month
-
-        total_gastado = odoo.get_total_gasto_cliente(cliente_id, company_id=company_id)
+            facturas = odoo.get_facturas_cliente(
+                cliente_id, company_id=company_id
+            )
+            total_gastado = odoo.get_total_gasto_cliente(
+                cliente_id, company_id=company_id
+            )
 
         return render_template(
             'cliente_detalle.html',
@@ -234,6 +240,7 @@ def factura_detalle(cliente_id, factura_id):
         return redirect(url_for('login'))
 
     company_id = request.args.get('company_id', type=int)
+    mes = request.args.get('mes')
 
     try:
         odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
@@ -243,12 +250,12 @@ def factura_detalle(cliente_id, factura_id):
         factura = odoo.get_factura(factura_id)
         if not factura:
             flash('Factura no encontrada', 'error')
-            return redirect(url_for('cliente_detalle', cliente_id=cliente_id, company_id=company_id))
+            return redirect(url_for('cliente_detalle', cliente_id=cliente_id, company_id=company_id, mes=mes))
 
-        return render_template('factura_detalle.html', factura=factura, cliente_id=cliente_id, company_id=company_id)
+        return render_template('factura_detalle.html', factura=factura, cliente_id=cliente_id, company_id=company_id, mes=mes)
     except Exception as e:
         flash(f'Error al cargar factura: {str(e)}', 'error')
-        return redirect(url_for('cliente_detalle', cliente_id=cliente_id, company_id=company_id))
+        return redirect(url_for('cliente_detalle', cliente_id=cliente_id, company_id=company_id, mes=mes))
 
 @app.route('/facturas/<int:factura_id>/pdf')
 def descargar_factura_pdf(factura_id):
@@ -453,6 +460,7 @@ def api_buscar_clientes():
     vendedor_id = request.args.get('vendedor_id', type=int)
     adeudados = request.args.get('adeudados')
     company_id = request.args.get('company_id', type=int)
+    mes = request.args.get('mes')
 
     try:
         odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
@@ -474,6 +482,21 @@ def api_buscar_clientes():
             ciudad=ciudad,
             company_id=company_id,
         )
+        if mes:
+            try:
+                year, month = map(int, mes.split('-'))
+                clientes_mes, _ = odoo.get_clientes_por_ubicacion_mes(
+                    year,
+                    month,
+                    provincia_id=provincia_id,
+                    ciudad=ciudad,
+                    user_id=user_id_param,
+                    company_id=company_id,
+                )
+                ids_mes = {c['id'] for c in clientes_mes}
+                clientes = [c for c in clientes if c['id'] in ids_mes]
+            except ValueError:
+                pass
         if adeudados:
             clientes = [c for c in clientes if c.get('deuda_total', 0) > 0]
         clientes.sort(key=lambda c: c.get('deuda_total', 0), reverse=True)
@@ -503,15 +526,24 @@ def api_facturas_cliente(cliente_id):
                 facturas = odoo.get_facturas_cliente_mes(
                     cliente_id, year, month, codigo_factura, estado_filtro, company_id=company_id
                 )
+                total_gastado = odoo.get_total_gasto_cliente_mes(
+                    cliente_id, year, month, company_id=company_id
+                )
             except ValueError:
                 facturas = odoo.get_facturas_cliente(
                     cliente_id, codigo_factura, estado_filtro, company_id=company_id
+                )
+                total_gastado = odoo.get_total_gasto_cliente(
+                    cliente_id, company_id=company_id
                 )
         else:
             facturas = odoo.get_facturas_cliente(
                 cliente_id, codigo_factura, estado_filtro, company_id=company_id
             )
-        return jsonify(facturas)
+            total_gastado = odoo.get_total_gasto_cliente(
+                cliente_id, company_id=company_id
+            )
+        return jsonify({'facturas': facturas, 'total_gastado': total_gastado})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
