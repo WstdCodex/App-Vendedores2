@@ -206,6 +206,7 @@ class OdooConnection:
                 self.db, self.uid, self.password,
                 'account.move', 'read',
                 [facturas_ids], {'fields': ['amount_total', 'amount_residual']}
+
             )
             total = 0.0
             for f in facturas:
@@ -217,29 +218,34 @@ class OdooConnection:
                 total += pagado
             return total
         except Exception as e:
-            print(f"Error obteniendo gasto mensual del cliente: {e}")
+            print(f"Error obteniendo gasto total del cliente: {e}")
             return 0.0
 
-    def get_total_gasto_cliente(self, partner_id):
-        """Obtener el total gastado por un cliente en todas sus facturas."""
+    def get_total_gasto_cliente(self, partner_id, company_id=None):
+        """Obtener el total efectivamente abonado por un cliente.
+
+        Suma todos los pagos registrados para el cliente, incluyendo pagos
+        parciales de facturas. Solo se consideran los pagos en estado
+        ``posted``. Si se especifica ``company_id`` se filtra por compañía.
+        """
         try:
             domain = [
-                ('move_type', '=', 'out_invoice'),
                 ('partner_id', '=', partner_id),
                 ('state', '=', 'posted'),
+                ('payment_type', '=', 'inbound'),
             ]
-            facturas_ids = self.models.execute_kw(
-                self.db, self.uid, self.password,
-                'account.move', 'search', [domain]
+            if company_id is not None:
+                domain.append(('company_id', '=', company_id))
+            pagos = self.models.execute_kw(
+                self.db,
+                self.uid,
+                self.password,
+                'account.payment',
+                'search_read',
+                [domain],
+                {'fields': ['amount']},
             )
-            if not facturas_ids:
-                return 0.0
-            facturas = self.models.execute_kw(
-                self.db, self.uid, self.password,
-                'account.move', 'read',
-                [facturas_ids], {'fields': ['amount_total']}
-            )
-            return sum(f.get('amount_total', 0.0) for f in facturas)
+            return sum(p.get('amount', 0.0) or 0.0 for p in pagos)
         except Exception as e:
             print(f"Error obteniendo gasto total del cliente: {e}")
             return 0.0

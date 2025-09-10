@@ -209,7 +209,8 @@ def cliente_detalle(cliente_id):
             now = datetime.now()
             year, month = now.year, now.month
 
-        total_gastado = odoo.get_total_gasto_cliente_mes(cliente_id, year, month)
+
+        total_gastado = odoo.get_total_gasto_cliente(cliente_id, company_id=company_id)
 
 
         return render_template('cliente_detalle.html', cliente=cliente_info,
