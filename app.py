@@ -209,9 +209,9 @@ def cliente_detalle(cliente_id):
             now = datetime.now()
             year, month = now.year, now.month
 
+        facturas = [f for f in facturas if f.get('estado') != 'paid']
 
         total_gastado = odoo.get_total_gasto_cliente(cliente_id, company_id=company_id)
-
 
         return render_template('cliente_detalle.html', cliente=cliente_info,
                                facturas=facturas, total_gastado=total_gastado,
@@ -500,6 +500,8 @@ def api_facturas_cliente(cliente_id):
             facturas = odoo.get_facturas_cliente(
                 cliente_id, codigo_factura, estado_filtro
             )
+        if not estado_filtro:
+            facturas = [f for f in facturas if f.get('estado') != 'paid']
         return jsonify(facturas)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
