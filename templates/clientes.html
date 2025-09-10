@@ -32,9 +32,25 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-3">
                     <label class="form-label fw-semibold">Mes:</label>
-                    <input type="month" class="form-control" id="filtroMes">
+                    <div class="d-flex">
+                        <select id="filtroMes" class="form-select me-2">
+                            <option value="01">Enero</option>
+                            <option value="02">Febrero</option>
+                            <option value="03">Marzo</option>
+                            <option value="04">Abril</option>
+                            <option value="05">Mayo</option>
+                            <option value="06">Junio</option>
+                            <option value="07">Julio</option>
+                            <option value="08">Agosto</option>
+                            <option value="09">Septiembre</option>
+                            <option value="10">Octubre</option>
+                            <option value="11">Noviembre</option>
+                            <option value="12">Diciembre</option>
+                        </select>
+                        <input type="number" class="form-control" id="filtroAnio" min="2000" max="2100">
+                    </div>
                 </div>
                 {% if mostrar_todo %}
                 <div class="col-md-2">
@@ -94,7 +110,9 @@ function buscarClientes() {
     const vendedorId = vendedorElem ? vendedorElem.value : '';
     const companiaElem = document.getElementById('filtroCompania');
     const companyId = companiaElem ? companiaElem.value : '';
-    const mes = document.getElementById('filtroMes').value;
+    const mesVal = document.getElementById('filtroMes').value;
+    const anioVal = document.getElementById('filtroAnio').value;
+    const mes = (mesVal && anioVal) ? `${anioVal}-${mesVal}` : '';
     const adeudados = document.getElementById('filtroAdeudados').checked;
     mostrarLoading();
     const params = new URLSearchParams();
@@ -138,7 +156,9 @@ function actualizarListaClientes(clientes) {
 
     const companiaElem = document.getElementById('filtroCompania');
     const companyId = companiaElem ? companiaElem.value : '';
-    const mes = document.getElementById('filtroMes').value;
+    const mesVal = document.getElementById('filtroMes').value;
+    const anioVal = document.getElementById('filtroAnio').value;
+    const mes = (mesVal && anioVal) ? `${anioVal}-${mesVal}` : '';
     const linkParams = new URLSearchParams();
     if (mes) linkParams.append('mes', mes);
     if (companyId) linkParams.append('company_id', companyId);
@@ -229,6 +249,7 @@ document.getElementById('filtroProvincia').addEventListener('change', () => {
 document.getElementById('filtroCiudad').addEventListener('change', buscarClientes);
 document.getElementById('filtroAdeudados').addEventListener('change', buscarClientes);
 document.getElementById('filtroMes').addEventListener('change', buscarClientes);
+document.getElementById('filtroAnio').addEventListener('change', buscarClientes);
 
 const vendedorElem = document.getElementById('filtroVendedor');
 if (vendedorElem) {
@@ -248,8 +269,10 @@ if (companiaElem) {
 // Cargar la lista de clientes al iniciar la página
 document.addEventListener('DOMContentLoaded', () => {
     const mesElem = document.getElementById('filtroMes');
-    const now = new Date().toISOString().slice(0, 7);
-    mesElem.value = now;
+    const anioElem = document.getElementById('filtroAnio');
+    const now = new Date();
+    mesElem.value = String(now.getMonth() + 1).padStart(2, '0');
+    anioElem.value = now.getFullYear();
     cargarProvincias();
     if (document.getElementById('filtroVendedor')) {
         cargarVendedores();
