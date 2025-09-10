@@ -61,11 +61,11 @@
         <!-- Búsqueda y Filtros -->
         <div class="search-container">
             <div class="row g-3">
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <label class="form-label fw-semibold">Buscar Factura:</label>
                     <input type="text" class="form-control" id="buscarFactura" placeholder="Código de factura...">
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label class="form-label fw-semibold">Filtrar por Estado:</label>
                     <select class="form-select" id="filtroEstado">
                         <option value="">Todos los estados</option>
@@ -73,6 +73,10 @@
                         <option value="partial">Pagadas parcialmente</option>
                         <option value="paid">Pagadas</option>
                     </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Mes:</label>
+                    <input type="month" class="form-control" id="filtroMes" value="{{ mes }}">
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
                     <button class="btn btn-primary w-100" onclick="buscarFacturasCliente()">
@@ -109,7 +113,7 @@
                                 {% for factura in facturas %}
                                 <tr>
                                     <td class="fw-bold">
-                                        <a href="{{ url_for('factura_detalle', cliente_id=cliente.id, factura_id=factura.id, company_id=company_id) }}" class="text-decoration-none">
+                                        <a href="{{ url_for('factura_detalle', cliente_id=cliente.id, factura_id=factura.id, company_id=company_id, mes=mes or None) }}" class="text-decoration-none">
                                             {{ factura.nombre }}
                                         </a>
                                     </td>
@@ -139,16 +143,16 @@
 {% block extra_js %}
 <script>
 const CLIENTE_ID = {{ cliente.id }};
-const MES = "{{ mes or '' }}";
 const COMPANY_ID = {{ company_id if company_id is not none else 'null' }};
 function buscarFacturasCliente() {
     const codigoFactura = document.getElementById('buscarFactura').value;
     const estadoFiltro = document.getElementById('filtroEstado').value;
+    const mes = document.getElementById('filtroMes').value;
     mostrarLoading();
     const params = new URLSearchParams();
     if (codigoFactura) params.append('codigo', codigoFactura);
     if (estadoFiltro) params.append('estado', estadoFiltro);
-    if (MES) params.append('mes', MES);
+    if (mes) params.append('mes', mes);
     if (COMPANY_ID) params.append('company_id', COMPANY_ID);
     fetch(`/api/cliente/${CLIENTE_ID}/facturas?${params.toString()}`)
         .then(response => response.json())
@@ -177,9 +181,14 @@ function actualizarTablaFacturas(facturas) {
         return;
     }
 
+    const mes = document.getElementById('filtroMes').value;
+    const linkParams = new URLSearchParams();
+    if (COMPANY_ID) linkParams.append('company_id', COMPANY_ID);
+    if (mes) linkParams.append('mes', mes);
+
     tbody.innerHTML = facturas.map(factura => `
         <tr>
-            <td class="fw-bold"><a href="/clientes/${CLIENTE_ID}/factura/${factura.id}${COMPANY_ID ? `?company_id=${COMPANY_ID}` : ''}" class="text-decoration-none">${factura.nombre}</a></td>
+            <td class="fw-bold"><a href="/clientes/${CLIENTE_ID}/factura/${factura.id}${linkParams.toString() ? `?${linkParams.toString()}` : ''}" class="text-decoration-none">${factura.nombre}</a></td>
             <td>${factura.fecha}</td>
             <td class="fw-semibold text-success">${factura.total.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             <td class="fw-semibold text-warning">${factura.pendiente.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
@@ -196,5 +205,6 @@ document.getElementById('buscarFactura').addEventListener('input', function() {
 });
 
 document.getElementById('filtroEstado').addEventListener('change', buscarFacturasCliente);
+document.getElementById('filtroMes').addEventListener('change', buscarFacturasCliente);
 </script>
 {% endblock %}
