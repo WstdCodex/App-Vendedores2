@@ -841,7 +841,7 @@ class OdooConnection:
                 {
                     'fields': [
                         'name', 'invoice_date', 'amount_total', 'amount_residual',
-                        'payment_state'
+                        'payment_state', 'invoice_payments_widget'
                     ]
                 }
             )
@@ -851,11 +851,25 @@ class OdooConnection:
                 estado_pago = self._get_payment_state(factura)
                 if estado_filtro and estado_pago != estado_filtro:
                     continue
+
+                pagado = 0.0
+                widget = factura.get('invoice_payments_widget')
+                try:
+                    if widget:
+                        data = json.loads(widget) if isinstance(widget, str) else widget
+                        for p in data.get('content', []):
+                            pagado += p.get('amount', 0.0) or 0.0
+                except Exception:
+                    pagado = factura.get('amount_total', 0.0) - factura.get('amount_residual', 0.0)
+                if not widget:
+                    pagado = factura.get('amount_total', 0.0) - factura.get('amount_residual', 0.0)
+
                 facturas_formateadas.append({
                     'id': factura['id'],
                     'nombre': factura['name'],
                     'fecha': self._format_date(factura.get('invoice_date')),
                     'total': factura['amount_total'],
+                    'pagado': pagado,
                     'pendiente': factura['amount_residual'],
                     'estado': estado_pago,
                     'estado_texto': self.get_estado_texto(estado_pago),
@@ -899,7 +913,7 @@ class OdooConnection:
                 {
                     'fields': [
                         'name', 'invoice_date', 'amount_total', 'amount_residual',
-                        'payment_state'
+                        'payment_state', 'invoice_payments_widget'
                     ]
                 }
             )
@@ -909,11 +923,25 @@ class OdooConnection:
                 estado_pago = self._get_payment_state(factura)
                 if estado_filtro and estado_pago != estado_filtro:
                     continue
+
+                pagado = 0.0
+                widget = factura.get('invoice_payments_widget')
+                try:
+                    if widget:
+                        data = json.loads(widget) if isinstance(widget, str) else widget
+                        for p in data.get('content', []):
+                            pagado += p.get('amount', 0.0) or 0.0
+                except Exception:
+                    pagado = factura.get('amount_total', 0.0) - factura.get('amount_residual', 0.0)
+                if not widget:
+                    pagado = factura.get('amount_total', 0.0) - factura.get('amount_residual', 0.0)
+
                 facturas_formateadas.append({
                     'id': factura['id'],
                     'nombre': factura['name'],
                     'fecha': self._format_date(factura.get('invoice_date')),
                     'total': factura['amount_total'],
+                    'pagado': pagado,
                     'pendiente': factura['amount_residual'],
                     'estado': estado_pago,
                     'estado_texto': self.get_estado_texto(estado_pago),
