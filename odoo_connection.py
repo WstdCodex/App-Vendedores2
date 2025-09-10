@@ -600,7 +600,7 @@ class OdooConnection:
 
                 credito = c.get('credit', 0.0)
                 debito = c.get('debit', 0.0)
-                balance = credito - debito
+                balance = debito - credito
                 deuda_total = max(balance, 0.0)
                 saldo_favor = max(-balance, 0.0)
                 clientes_formateados.append(
@@ -676,7 +676,7 @@ class OdooConnection:
 
                 credito = c.get('credit', 0.0)
                 debito = c.get('debit', 0.0)
-                balance = credito - debito
+                balance = debito - credito
                 deuda_total = max(balance, 0.0)
                 saldo_favor = max(-balance, 0.0)
 
@@ -722,7 +722,7 @@ class OdooConnection:
                 c = cliente[0]
                 credito = c.get('credit', 0.0)
                 debito = c.get('debit', 0.0)
-                balance = credito - debito
+                balance = debito - credito
                 deuda_total = max(balance, 0.0)
                 saldo_favor = max(-balance, 0.0)
                 
