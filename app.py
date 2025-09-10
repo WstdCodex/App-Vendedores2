@@ -182,7 +182,7 @@ def cliente_detalle(cliente_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
-    mes = request.args.get('mes')
+    mes_param = request.args.get('mes')
     return_url = request.args.get('return_url')
     company_id = request.args.get('company_id', type=int)
 
@@ -193,25 +193,25 @@ def cliente_detalle(cliente_id):
 
         cliente_info = odoo.get_cliente(cliente_id, company_id=company_id)
 
-        if mes:
+        if mes_param:
             try:
-                year, month = map(int, mes.split('-'))
+                year, month = map(int, mes_param.split('-'))
+                facturas = odoo.get_facturas_cliente_mes(cliente_id, year, month)
+                total_mes = odoo.get_total_gasto_cliente_mes(cliente_id, year, month)
             except ValueError:
+                # Si el parámetro es inválido, ignoramos el filtro por mes
+                facturas = odoo.get_facturas_cliente(cliente_id)
                 now = datetime.now()
-                year, month = now.year, now.month
-                mes = f"{year:04d}-{month:02d}"
-            facturas = odoo.get_facturas_cliente_mes(cliente_id, year, month)
-            total_mes = odoo.get_total_gasto_cliente_mes(cliente_id, year, month)
+                total_mes = odoo.get_total_gasto_cliente_mes(cliente_id, now.year, now.month)
+                mes_param = ''
         else:
             facturas = odoo.get_facturas_cliente(cliente_id)
             now = datetime.now()
-            year, month = now.year, now.month
-            mes = f"{year:04d}-{month:02d}"
-            total_mes = odoo.get_total_gasto_cliente_mes(cliente_id, year, month)
+            total_mes = odoo.get_total_gasto_cliente_mes(cliente_id, now.year, now.month)
 
         return render_template('cliente_detalle.html', cliente=cliente_info,
                                facturas=facturas, total_mes=total_mes,
-                               mes=mes, return_url=return_url)
+                               mes=mes_param or '', return_url=return_url)
     except Exception as e:
         flash(f'Error al cargar cliente: {str(e)}', 'error')
         if return_url:
