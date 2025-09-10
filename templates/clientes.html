@@ -32,6 +32,10 @@
                         {% endfor %}
                     </select>
                 </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold">Mes:</label>
+                    <input type="month" class="form-control" id="filtroMes">
+                </div>
                 {% if mostrar_todo %}
                 <div class="col-md-2">
                     <label class="form-label fw-semibold">Comercial:</label>
@@ -90,6 +94,7 @@ function buscarClientes() {
     const vendedorId = vendedorElem ? vendedorElem.value : '';
     const companiaElem = document.getElementById('filtroCompania');
     const companyId = companiaElem ? companiaElem.value : '';
+    const mes = document.getElementById('filtroMes').value;
     const adeudados = document.getElementById('filtroAdeudados').checked;
     mostrarLoading();
     const params = new URLSearchParams();
@@ -99,6 +104,7 @@ function buscarClientes() {
     if (ciudad) params.append('ciudad', ciudad);
     if (vendedorId) params.append('vendedor_id', vendedorId);
     if (companyId) params.append('company_id', companyId);
+    if (mes) params.append('mes', mes);
     params.append('limite', limite);
     if (adeudados) params.append('adeudados', '1');
     fetch(`/api/buscar-clientes?${params.toString()}`)
@@ -132,9 +138,17 @@ function actualizarListaClientes(clientes) {
 
     const companiaElem = document.getElementById('filtroCompania');
     const companyId = companiaElem ? companiaElem.value : '';
+    const mes = document.getElementById('filtroMes').value;
+    const linkParams = new URLSearchParams();
+    if (mes) linkParams.append('mes', mes);
+    if (companyId) linkParams.append('company_id', companyId);
+    const returnUrl = `/clientes${linkParams.toString() ? `?${linkParams.toString()}` : ''}`;
+    const detailParams = new URLSearchParams(linkParams.toString());
+    detailParams.append('return_url', returnUrl);
+    const queryStr = detailParams.toString();
 
     lista.innerHTML = clientes.map(c => `
-        <a href="/clientes/${c.id}${companyId ? `?company_id=${companyId}` : ''}" class="text-decoration-none text-dark">
+        <a href="/clientes/${c.id}${queryStr ? `?${queryStr}` : ''}" class="text-decoration-none text-dark">
             <div class="card cliente-card">
                 <div class="card-body">
                     <h5 class="fw-bold text-primary">
@@ -214,6 +228,7 @@ document.getElementById('filtroProvincia').addEventListener('change', () => {
 
 document.getElementById('filtroCiudad').addEventListener('change', buscarClientes);
 document.getElementById('filtroAdeudados').addEventListener('change', buscarClientes);
+document.getElementById('filtroMes').addEventListener('change', buscarClientes);
 
 const vendedorElem = document.getElementById('filtroVendedor');
 if (vendedorElem) {
@@ -232,6 +247,9 @@ if (companiaElem) {
 
 // Cargar la lista de clientes al iniciar la página
 document.addEventListener('DOMContentLoaded', () => {
+    const mesElem = document.getElementById('filtroMes');
+    const now = new Date().toISOString().slice(0, 7);
+    mesElem.value = now;
     cargarProvincias();
     if (document.getElementById('filtroVendedor')) {
         cargarVendedores();
