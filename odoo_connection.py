@@ -818,7 +818,7 @@ class OdooConnection:
             print(f"Error obteniendo cliente: {e}")
             return {}
 
-    def get_facturas_cliente(self, partner_id, codigo_factura='', estado_filtro=''):
+    def get_facturas_cliente(self, partner_id, codigo_factura='', estado_filtro='', company_id=None):
         """Obtener facturas publicadas de un cliente con filtros"""
         try:
             domain = [
@@ -826,6 +826,8 @@ class OdooConnection:
                 ('partner_id', '=', partner_id),
                 ('state', '=', 'posted')
             ]
+            if company_id is not None:
+                domain.append(('company_id', '=', company_id))
             if codigo_factura:
                 domain.append(('name', 'ilike', codigo_factura))
 
@@ -869,7 +871,7 @@ class OdooConnection:
             return []
 
     def get_facturas_cliente_mes(self, partner_id, year, month,
-                                 codigo_factura='', estado_filtro=''):
+                                 codigo_factura='', estado_filtro='', company_id=None):
         """Obtener facturas publicadas de un cliente en un mes específico."""
         try:
             start_date = datetime(year, month, 1).strftime('%Y-%m-%d')
@@ -882,6 +884,8 @@ class OdooConnection:
                 ('invoice_date', '>=', start_date),
                 ('invoice_date', '<=', end_date),
             ]
+            if company_id is not None:
+                domain.append(('company_id', '=', company_id))
             if codigo_factura:
                 domain.append(('name', 'ilike', codigo_factura))
 
