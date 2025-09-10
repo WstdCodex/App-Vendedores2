@@ -197,20 +197,21 @@ def cliente_detalle(cliente_id):
             try:
                 year, month = map(int, mes_param.split('-'))
                 facturas = odoo.get_facturas_cliente_mes(cliente_id, year, month)
-                total_mes = odoo.get_total_gasto_cliente_mes(cliente_id, year, month)
             except ValueError:
-                # Si el parámetro es inválido, ignoramos el filtro por mes
+                # Si el parámetro es inválido, se muestran todas las facturas
                 facturas = odoo.get_facturas_cliente(cliente_id)
                 now = datetime.now()
-                total_mes = odoo.get_total_gasto_cliente_mes(cliente_id, now.year, now.month)
+                year, month = now.year, now.month
                 mes_param = ''
         else:
             facturas = odoo.get_facturas_cliente(cliente_id)
             now = datetime.now()
-            total_mes = odoo.get_total_gasto_cliente_mes(cliente_id, now.year, now.month)
+            year, month = now.year, now.month
+
+        total_gastado = odoo.get_total_gasto_cliente_mes(cliente_id, year, month)
 
         return render_template('cliente_detalle.html', cliente=cliente_info,
-                               facturas=facturas, total_mes=total_mes,
+                               facturas=facturas, total_gastado=total_gastado,
                                mes=mes_param or '', return_url=return_url)
     except Exception as e:
         flash(f'Error al cargar cliente: {str(e)}', 'error')
