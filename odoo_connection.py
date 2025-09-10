@@ -550,6 +550,43 @@ class OdooConnection:
             print(f"Error obteniendo vendedores específicos: {e}")
             return []
 
+    def _get_saldos_clientes(self, partner_ids, company_id=None):
+        """Calcular deuda y saldo a favor a partir de facturas."""
+        try:
+            domain = [
+                ('move_type', 'in', ['out_invoice', 'out_refund']),
+                ('state', '=', 'posted'),
+                ('partner_id', 'in', partner_ids),
+            ]
+            if company_id is not None:
+                domain.append(('company_id', '=', company_id))
+
+            grupos = self.models.execute_kw(
+                self.db,
+                self.uid,
+                self.password,
+                'account.move',
+                'read_group',
+                [domain, ['amount_residual'], ['partner_id']],
+                {'lazy': False},
+            )
+
+            saldos = {pid: {'deuda_total': 0.0, 'saldo_favor': 0.0} for pid in partner_ids}
+            for g in grupos:
+                partner = g.get('partner_id')
+                if not partner:
+                    continue
+                partner_id = partner[0] if isinstance(partner, (list, tuple)) else partner
+                residual = g.get('amount_residual', 0.0) or 0.0
+                if residual > 0:
+                    saldos[partner_id]['deuda_total'] = residual
+                elif residual < 0:
+                    saldos[partner_id]['saldo_favor'] = -residual
+            return saldos
+        except Exception as e:
+            print(f"Error obteniendo saldos de clientes: {e}")
+            return {pid: {'deuda_total': 0.0, 'saldo_favor': 0.0} for pid in partner_ids}
+
     def buscar_clientes(self, nombre_cliente: str = '', user_id: int = None,
                          limit: int = 20, provincia_id: int = None,
                          ciudad: str = '', company_id: int = None):
@@ -578,7 +615,7 @@ class OdooConnection:
             print(f"Buscando clientes con dominio: {domain}")
 
             kwargs = {
-                'fields': ['name', 'credit', 'debit', 'user_id'],
+                'fields': ['name', 'user_id'],
                 'limit': limit,
             }
             if company_id is not None:
@@ -603,6 +640,9 @@ class OdooConnection:
             if not clientes:
                 return []
 
+            partner_ids = [c['id'] for c in clientes]
+            saldos = self._get_saldos_clientes(partner_ids, company_id)
+
             clientes_formateados = []
             for c in clientes:
                 cliente_user_id = c.get('user_id')
@@ -620,17 +660,13 @@ class OdooConnection:
                     )
                     continue
 
-                credito = c.get('credit', 0.0)
-                debito = c.get('debit', 0.0)
-                balance = debito - credito
-                deuda_total = max(balance, 0.0)
-                saldo_favor = max(-balance, 0.0)
+                saldo = saldos.get(c['id'], {})
                 clientes_formateados.append(
                     {
                         'id': c['id'],
                         'nombre': c.get('name', ''),
-                        'deuda_total': deuda_total,
-                        'saldo_favor': saldo_favor,
+                        'deuda_total': saldo.get('deuda_total', 0.0),
+                        'saldo_favor': saldo.get('saldo_favor', 0.0),
                         'vendedor_id': cliente_user_id,
                     }
                 )
@@ -675,7 +711,7 @@ class OdooConnection:
                 'search_read',
                 [domain],
                 {
-                    'fields': ['name', 'credit', 'debit', 'user_id', 'email', 'phone'],
+                    'fields': ['name', 'user_id', 'email', 'phone'],
                     'limit': limit,
                     'order': 'name ASC'
                 },
@@ -685,6 +721,9 @@ class OdooConnection:
 
             if not clientes:
                 return []
+
+            partner_ids = [c['id'] for c in clientes]
+            saldos = self._get_saldos_clientes(partner_ids)
 
             clientes_formateados = []
             for c in clientes:
@@ -696,19 +735,15 @@ class OdooConnection:
                         print(f"ADVERTENCIA: Cliente {c.get('name')} tiene vendedor {vendedor_id}, esperado {user_id}")
                         continue
 
-                credito = c.get('credit', 0.0)
-                debito = c.get('debit', 0.0)
-                balance = debito - credito
-                deuda_total = max(balance, 0.0)
-                saldo_favor = max(-balance, 0.0)
+                saldo = saldos.get(c['id'], {})
 
                 clientes_formateados.append({
                     'id': c['id'],
                     'nombre': c.get('name', ''),
                     'email': c.get('email', ''),
                     'telefono': c.get('phone', ''),
-                    'deuda_total': deuda_total,
-                    'saldo_favor': saldo_favor,
+                    'deuda_total': saldo.get('deuda_total', 0.0),
+                    'saldo_favor': saldo.get('saldo_favor', 0.0),
                 })
 
             print(f"Clientes procesados correctamente: {len(clientes_formateados)}")
@@ -722,7 +757,7 @@ class OdooConnection:
         """Obtener información del cliente"""
         try:
             kwargs = {
-                'fields': ['name', 'email', 'phone', 'street', 'credit', 'debit', 'user_id']
+                'fields': ['name', 'email', 'phone', 'street', 'user_id']
             }
             if company_id is not None:
 
@@ -742,12 +777,13 @@ class OdooConnection:
             )
             if cliente:
                 c = cliente[0]
-                credito = c.get('credit', 0.0)
-                debito = c.get('debit', 0.0)
-                balance = debito - credito
-                deuda_total = max(balance, 0.0)
-                saldo_favor = max(-balance, 0.0)
-                
+
+                saldos = self._get_saldos_clientes([partner_id], company_id)
+                saldo = saldos.get(partner_id, {'deuda_total': 0.0, 'saldo_favor': 0.0})
+
+                deuda_total = saldo.get('deuda_total', 0.0)
+                saldo_favor = saldo.get('saldo_favor', 0.0)
+
                 # Obtener información del vendedor asignado
                 vendedor_info = ""
                 if c.get('user_id'):
