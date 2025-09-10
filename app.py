@@ -453,6 +453,7 @@ def api_buscar_clientes():
     vendedor_id = request.args.get('vendedor_id', type=int)
     adeudados = request.args.get('adeudados')
     company_id = request.args.get('company_id', type=int)
+    mes = request.args.get('mes')
 
     try:
         odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
@@ -474,6 +475,21 @@ def api_buscar_clientes():
             ciudad=ciudad,
             company_id=company_id,
         )
+        if mes:
+            try:
+                year, month = map(int, mes.split('-'))
+                clientes_mes, _ = odoo.get_clientes_por_ubicacion_mes(
+                    year,
+                    month,
+                    provincia_id=provincia_id,
+                    ciudad=ciudad,
+                    user_id=user_id_param,
+                    company_id=company_id,
+                )
+                ids_mes = {c['id'] for c in clientes_mes}
+                clientes = [c for c in clientes if c['id'] in ids_mes]
+            except ValueError:
+                pass
         if adeudados:
             clientes = [c for c in clientes if c.get('deuda_total', 0) > 0]
         clientes.sort(key=lambda c: c.get('deuda_total', 0), reverse=True)
