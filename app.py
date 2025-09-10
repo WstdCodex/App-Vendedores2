@@ -104,7 +104,7 @@ def estadistico():
             odoo.has_group('sales_team.group_sale_salesman_all_leads')
         )
 
-        companias = odoo.get_companias() if mostrar_todo else []
+        companias = odoo.get_companias()
 
         if mostrar_todo:
             vendedores = odoo.get_vendedores_especificos()
@@ -168,7 +168,7 @@ def clientes():
             odoo.has_group('sales_team.group_sale_manager') or
             odoo.has_group('sales_team.group_sale_salesman_all_leads')
         )
-        companias = odoo.get_companias() if mostrar_todo else []
+        companias = odoo.get_companias()
     except Exception:
         mostrar_todo = False
         companias = []
