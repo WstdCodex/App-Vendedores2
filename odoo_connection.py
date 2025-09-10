@@ -514,32 +514,6 @@ class OdooConnection:
 
             print(f"Buscando clientes con dominio: {domain}")
 
-            invoice_totals = {}
-            if company_id is not None:
-                invoice_domain = [
-                    ('move_type', '=', 'out_invoice'),
-                    ('state', '=', 'posted'),
-                    ('company_id', '=', company_id),
-                ]
-                context = {
-                    'force_company': company_id,
-                    'allowed_company_ids': [company_id],
-                }
-                invoice_data = self.models.execute_kw(
-                    self.db,
-                    self.uid,
-                    self.password,
-                    'account.move',
-                    'read_group',
-                    [invoice_domain, ['amount_residual'], ['partner_id']],
-                    {'context': context},
-                )
-                invoice_totals = {
-                    d['partner_id'][0]: d.get('amount_residual', 0.0)
-                    for d in invoice_data
-                    if d.get('partner_id')
-                }
-
             kwargs = {
                 'fields': ['name', 'credit', 'debit', 'user_id'],
                 'limit': limit,
@@ -566,28 +540,6 @@ class OdooConnection:
             if not clientes:
                 return []
 
-            # Si no filtramos por compañía, calculamos las deudas en una sola llamada
-            if company_id is None:
-                partner_ids = [c['id'] for c in clientes]
-                invoice_domain = [
-                    ('move_type', '=', 'out_invoice'),
-                    ('state', '=', 'posted'),
-                    ('partner_id', 'in', partner_ids),
-                ]
-                invoice_data = self.models.execute_kw(
-                    self.db,
-                    self.uid,
-                    self.password,
-                    'account.move',
-                    'read_group',
-                    [invoice_domain, ['amount_residual'], ['partner_id']],
-                )
-                invoice_totals = {
-                    d['partner_id'][0]: d.get('amount_residual', 0.0)
-                    for d in invoice_data
-                    if d.get('partner_id')
-                }
-
             clientes_formateados = []
             for c in clientes:
                 cliente_user_id = c.get('user_id')
@@ -605,10 +557,11 @@ class OdooConnection:
                     )
                     continue
 
-                deuda_total = invoice_totals.get(c['id'], 0.0)
                 credito = c.get('credit', 0.0)
                 debito = c.get('debit', 0.0)
-                saldo_favor = max(credito - debito, 0.0)
+                balance = credito - debito
+                deuda_total = max(balance, 0.0)
+                saldo_favor = max(-balance, 0.0)
                 clientes_formateados.append(
                     {
                         'id': c['id'],
@@ -680,34 +633,12 @@ class OdooConnection:
                         print(f"ADVERTENCIA: Cliente {c.get('name')} tiene vendedor {vendedor_id}, esperado {user_id}")
                         continue
 
-                # Calcular deuda total
-                deuda_total = 0.0
-                try:
-                    facturas_pendientes = self.models.execute_kw(
-                        self.db,
-                        self.uid,
-                        self.password,
-                        'account.move',
-                        'search_read',
-                        [[
-                            ('move_type', '=', 'out_invoice'),
-                            ('partner_id', '=', c['id']),
-                            ('state', '=', 'posted'),
-                            ('amount_residual', '>', 0),
-                        ]],
-                        {'fields': ['amount_residual']},
-                    )
-                    deuda_total = sum(
-                        f.get('amount_residual', 0.0) for f in facturas_pendientes
-                    )
-                except Exception as e:
-                    print(f"Error calculando deuda para cliente {c['id']}: {e}")
-                    deuda_total = 0.0
-
                 credito = c.get('credit', 0.0)
                 debito = c.get('debit', 0.0)
-                saldo_favor = max(credito - debito, 0.0)
-                
+                balance = credito - debito
+                deuda_total = max(balance, 0.0)
+                saldo_favor = max(-balance, 0.0)
+
                 clientes_formateados.append({
                     'id': c['id'],
                     'nombre': c.get('name', ''),
@@ -748,46 +679,11 @@ class OdooConnection:
             )
             if cliente:
                 c = cliente[0]
-                # Calcular la deuda total sumando los montos pendientes de las
-                # facturas publicadas del cliente.
-                deuda_total = 0.0
-                try:
-                    invoice_domain = [
-                        ('move_type', '=', 'out_invoice'),
-                        ('partner_id', '=', c['id']),
-                        ('state', '=', 'posted'),
-                        ('amount_residual', '>', 0),
-                    ]
-                    if company_id is not None:
-                        invoice_domain.append(('company_id', '=', company_id))
-
-                        context = {
-                            'force_company': company_id,
-                            'allowed_company_ids': [company_id],
-                        }
-                    else:
-                        context = {}
-
-                    facturas_pendientes = self.models.execute_kw(
-                        self.db,
-                        self.uid,
-                        self.password,
-                        'account.move',
-                        'search_read',
-                        [invoice_domain],
-
-                        {'fields': ['amount_residual'], 'context': context},
-
-                    )
-                    deuda_total = sum(
-                        f.get('amount_residual', 0.0) for f in facturas_pendientes
-                    )
-                except Exception:
-                    deuda_total = 0.0
-
                 credito = c.get('credit', 0.0)
                 debito = c.get('debit', 0.0)
-                saldo_favor = max(credito - debito, 0.0)
+                balance = credito - debito
+                deuda_total = max(balance, 0.0)
+                saldo_favor = max(-balance, 0.0)
                 
                 # Obtener información del vendedor asignado
                 vendedor_info = ""
