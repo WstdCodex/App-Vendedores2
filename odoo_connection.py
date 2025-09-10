@@ -209,6 +209,30 @@ class OdooConnection:
             print(f"Error obteniendo gasto mensual del cliente: {e}")
             return 0.0
 
+    def get_total_gasto_cliente(self, partner_id):
+        """Obtener el total gastado por un cliente en todas sus facturas."""
+        try:
+            domain = [
+                ('move_type', '=', 'out_invoice'),
+                ('partner_id', '=', partner_id),
+                ('state', '=', 'posted'),
+            ]
+            facturas_ids = self.models.execute_kw(
+                self.db, self.uid, self.password,
+                'account.move', 'search', [domain]
+            )
+            if not facturas_ids:
+                return 0.0
+            facturas = self.models.execute_kw(
+                self.db, self.uid, self.password,
+                'account.move', 'read',
+                [facturas_ids], {'fields': ['amount_total']}
+            )
+            return sum(f.get('amount_total', 0.0) for f in facturas)
+        except Exception as e:
+            print(f"Error obteniendo gasto total del cliente: {e}")
+            return 0.0
+
     def get_clientes_por_ubicacion_mes(self, year, month, provincia_id=None,
                                        ciudad='', user_id=None, company_id=None):
         """Obtener clientes de una ubicación y su gasto mensual.
