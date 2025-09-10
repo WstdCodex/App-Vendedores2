@@ -74,7 +74,23 @@
                 </div>
                 <div class="col-md-3">
                     <label class="form-label fw-semibold">Mes:</label>
-                    <input type="month" class="form-control" id="filtroMes" value="{{ mes }}">
+                    <div class="d-flex">
+                        <select id="filtroMes" class="form-select me-2">
+                            <option value="01">Enero</option>
+                            <option value="02">Febrero</option>
+                            <option value="03">Marzo</option>
+                            <option value="04">Abril</option>
+                            <option value="05">Mayo</option>
+                            <option value="06">Junio</option>
+                            <option value="07">Julio</option>
+                            <option value="08">Agosto</option>
+                            <option value="09">Septiembre</option>
+                            <option value="10">Octubre</option>
+                            <option value="11">Noviembre</option>
+                            <option value="12">Diciembre</option>
+                        </select>
+                        <input type="number" class="form-control" id="filtroAnio" min="2000" max="2100">
+                    </div>
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
                     <button class="btn btn-primary w-100" onclick="buscarFacturasCliente()">
@@ -144,10 +160,28 @@
 <script>
 const CLIENTE_ID = {{ cliente.id }};
 const COMPANY_ID = {{ company_id if company_id is not none else 'null' }};
+document.addEventListener('DOMContentLoaded', () => {
+    const mesParam = "{{ mes or '' }}";
+    const mesElem = document.getElementById('filtroMes');
+    const anioElem = document.getElementById('filtroAnio');
+    if (mesParam) {
+        const parts = mesParam.split('-');
+        if (parts.length === 2) {
+            anioElem.value = parts[0];
+            mesElem.value = parts[1];
+        }
+    } else {
+        const now = new Date();
+        mesElem.value = String(now.getMonth() + 1).padStart(2, '0');
+        anioElem.value = now.getFullYear();
+    }
+});
 function buscarFacturasCliente() {
     const codigoFactura = document.getElementById('buscarFactura').value;
     const estadoFiltro = document.getElementById('filtroEstado').value;
-    const mes = document.getElementById('filtroMes').value;
+    const mesVal = document.getElementById('filtroMes').value;
+    const anioVal = document.getElementById('filtroAnio').value;
+    const mes = (mesVal && anioVal) ? `${anioVal}-${mesVal}` : '';
     mostrarLoading();
     const params = new URLSearchParams();
     if (codigoFactura) params.append('codigo', codigoFactura);
@@ -182,7 +216,9 @@ function actualizarTablaFacturas(facturas) {
         return;
     }
 
-    const mes = document.getElementById('filtroMes').value;
+    const mesVal = document.getElementById('filtroMes').value;
+    const anioVal = document.getElementById('filtroAnio').value;
+    const mes = (mesVal && anioVal) ? `${anioVal}-${mesVal}` : '';
     const linkParams = new URLSearchParams();
     if (COMPANY_ID) linkParams.append('company_id', COMPANY_ID);
     if (mes) linkParams.append('mes', mes);
@@ -215,5 +251,6 @@ document.getElementById('buscarFactura').addEventListener('input', function() {
 
 document.getElementById('filtroEstado').addEventListener('change', buscarFacturasCliente);
 document.getElementById('filtroMes').addEventListener('change', buscarFacturasCliente);
+document.getElementById('filtroAnio').addEventListener('change', buscarFacturasCliente);
 </script>
 {% endblock %}
