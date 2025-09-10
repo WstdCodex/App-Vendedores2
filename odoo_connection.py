@@ -515,6 +515,8 @@ class OdooConnection:
                     ('customer_rank', '>', 0),
                     ('parent_id', '=', False)
                 ])
+            if company_id is not None:
+                domain.append(('company_id', '=', company_id))
 
             partners = self.models.execute_kw(
                 self.db,

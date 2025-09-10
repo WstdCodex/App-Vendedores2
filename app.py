@@ -101,10 +101,24 @@ def estadistico():
         odoo.uid = session['user_id']
         mostrar_todo = (
             odoo.has_group('sales_team.group_sale_manager') or
-            odoo.has_group('sales_team.group_sale_salesman_all_leads')
+            odoo.has_group('sales_team.group_sale_salesman_all_leads') or
+            session.get('user_name', '').lower().startswith('comercial') or
+            session.get('username', '').lower().startswith('comercial')
         )
 
-        companias = odoo.get_companias() if mostrar_todo else []
+        companias = []
+        if mostrar_todo:
+            try:
+                admin = OdooConnection(
+                    ODOO_CONFIG['url'],
+                    ODOO_CONFIG['db'],
+                    ODOO_CONFIG['report_user'],
+                    ODOO_CONFIG['report_password'],
+                )
+                admin.authenticate()
+                companias = admin.get_companias()
+            except Exception:
+                companias = []
 
         if mostrar_todo:
             vendedores = odoo.get_vendedores_especificos()
@@ -166,9 +180,23 @@ def clientes():
         odoo.uid = session['user_id']
         mostrar_todo = (
             odoo.has_group('sales_team.group_sale_manager') or
-            odoo.has_group('sales_team.group_sale_salesman_all_leads')
+            odoo.has_group('sales_team.group_sale_salesman_all_leads') or
+            session.get('user_name', '').lower().startswith('comercial') or
+            session.get('username', '').lower().startswith('comercial')
         )
-        companias = odoo.get_companias() if mostrar_todo else []
+        companias = []
+        if mostrar_todo:
+            try:
+                admin = OdooConnection(
+                    ODOO_CONFIG['url'],
+                    ODOO_CONFIG['db'],
+                    ODOO_CONFIG['report_user'],
+                    ODOO_CONFIG['report_password'],
+                )
+                admin.authenticate()
+                companias = admin.get_companias()
+            except Exception:
+                companias = []
     except Exception:
         mostrar_todo = False
         companias = []
@@ -393,7 +421,9 @@ def api_vendedores():
         odoo.uid = session['user_id']
         mostrar_todo = (
             odoo.has_group('sales_team.group_sale_manager') or
-            odoo.has_group('sales_team.group_sale_salesman_all_leads')
+            odoo.has_group('sales_team.group_sale_salesman_all_leads') or
+            session.get('user_name', '').lower().startswith('comercial') or
+            session.get('username', '').lower().startswith('comercial')
         )
         if not mostrar_todo:
             return jsonify([])
@@ -417,7 +447,9 @@ def api_ciudades():
         odoo.uid = session['user_id']
         mostrar_todo = (
             odoo.has_group('sales_team.group_sale_manager') or
-            odoo.has_group('sales_team.group_sale_salesman_all_leads')
+            odoo.has_group('sales_team.group_sale_salesman_all_leads') or
+            session.get('user_name', '').lower().startswith('comercial') or
+            session.get('username', '').lower().startswith('comercial')
         )
         user_id_param = None if mostrar_todo else session['user_id']
         if mostrar_todo and vendedor_id:
@@ -450,7 +482,9 @@ def api_buscar_clientes():
         odoo.uid = session['user_id']
         mostrar_todo = (
             odoo.has_group('sales_team.group_sale_manager') or
-            odoo.has_group('sales_team.group_sale_salesman_all_leads')
+            odoo.has_group('sales_team.group_sale_salesman_all_leads') or
+            session.get('user_name', '').lower().startswith('comercial') or
+            session.get('username', '').lower().startswith('comercial')
         )
 
         user_id_param = None if mostrar_todo else session['user_id']
