@@ -283,6 +283,9 @@ class OdooConnection:
         user_id : int, optional
             Filtrar por vendedor. Si es ``None`` se incluyen todos los
             vendedores.
+        company_id : int, optional
+            Filtrar por compañía. Si se especifica, también se incluirán los
+            clientes que no tengan facturas en dicha compañía.
 
         Returns
         -------
@@ -350,13 +353,13 @@ class OdooConnection:
             total_general = 0.0
             for p in partners:
                 total_cliente = totales.get(p['id'], 0.0)
-                if total_cliente > 0:
+                if total_cliente > 0 or company_id is not None:
                     resultados.append({
                         'id': p['id'],
                         'nombre': p['name'],
                         'total_mes': total_cliente,
                     })
-                    total_general += total_cliente
+                total_general += total_cliente
 
             resultados.sort(key=lambda x: x['total_mes'], reverse=True)
             return resultados, total_general
