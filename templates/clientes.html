@@ -19,11 +19,10 @@
         <!-- Búsqueda -->
         <div class="search-container">
             <div class="row g-3">
-                <div class="{% if mostrar_todo %}col-md-2{% else %}col-md-4{% endif %}">
+                <div class="{% if mostrar_todo %}col-md-2{% else %}col-md-3{% endif %}">
                     <label class="form-label fw-semibold">Buscar Cliente:</label>
                     <input type="text" class="form-control" id="buscarCliente" placeholder="Nombre del cliente...">
                 </div>
-                {% if mostrar_todo %}
                 <div class="col-md-2">
                     <label class="form-label fw-semibold">Compañía:</label>
                     <select id="filtroCompania" class="form-select">
@@ -33,6 +32,7 @@
                         {% endfor %}
                     </select>
                 </div>
+                {% if mostrar_todo %}
                 <div class="col-md-2">
                     <label class="form-label fw-semibold">Comercial:</label>
                     <select id="filtroVendedor" class="form-select">
@@ -40,19 +40,19 @@
                     </select>
                 </div>
                 {% endif %}
-                <div class="{% if mostrar_todo %}col-md-2{% else %}col-md-3{% endif %}">
+                <div class="col-md-2">
                     <label class="form-label fw-semibold">Provincia:</label>
                     <select id="filtroProvincia" class="form-select">
                         <option value="">Todas</option>
                     </select>
                 </div>
-                <div class="{% if mostrar_todo %}col-md-2{% else %}col-md-3{% endif %}">
+                <div class="col-md-2">
                     <label class="form-label fw-semibold">Ciudad:</label>
                     <select id="filtroCiudad" class="form-select">
                         <option value="">Todas</option>
                     </select>
                 </div>
-                <div class="{% if mostrar_todo %}col-md-1{% else %}col-md-2{% endif %} d-flex align-items-center">
+                <div class="col-md-1 d-flex align-items-center">
                     <div class="form-check mt-4">
                         <input class="form-check-input" type="checkbox" id="filtroAdeudados">
                         <label class="form-check-label fw-semibold" for="filtroAdeudados">Adeudados</label>

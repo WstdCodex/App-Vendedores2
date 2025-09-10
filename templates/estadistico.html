@@ -15,11 +15,10 @@
         <div class="card">
             <div class="card-body">
                 <form method="get" class="row g-3 align-items-end">
-                    <div class="{% if mostrar_todo %}col-md-2{% else %}col-md-3{% endif %}">
+                    <div class="col-md-2">
                         <label class="form-label fw-semibold">Mes:</label>
                         <input type="month" name="mes" class="form-control" value="{{ mes }}">
                     </div>
-                    {% if mostrar_todo %}
                     <div class="col-md-2">
                         <label class="form-label fw-semibold">Compañía:</label>
                         <select name="company_id" class="form-select" onchange="this.form.submit()">
@@ -29,6 +28,7 @@
                             {% endfor %}
                         </select>
                     </div>
+                    {% if mostrar_todo %}
                     <div class="col-md-2">
                         <label class="form-label fw-semibold">Comercial:</label>
                         <select name="vendedor_id" class="form-select" onchange="this.form.submit()">
@@ -57,7 +57,7 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="{% if mostrar_todo %}col-md-2{% else %}col-md-3{% endif %}">
+                    <div class="col-md-2">
                         <button class="btn btn-primary w-100" type="submit">
                             <i class="fas fa-search me-2"></i>Ver
                         </button>
