@@ -181,7 +181,10 @@ class OdooConnection:
             return 0.0
 
     def get_total_gasto_cliente_mes(self, partner_id, year, month):
-        """Obtener el total gastado por un cliente en un mes específico."""
+        """Obtener el total pagado por un cliente en un mes específico.
+
+        Incluye los montos abonados de manera parcial en cada factura.
+        """
         try:
             start_date = datetime(year, month, 1).strftime('%Y-%m-%d')
             end_day = monthrange(year, month)[1]
@@ -202,9 +205,17 @@ class OdooConnection:
             facturas = self.models.execute_kw(
                 self.db, self.uid, self.password,
                 'account.move', 'read',
-                [facturas_ids], {'fields': ['amount_total']}
+                [facturas_ids], {'fields': ['amount_total', 'amount_residual']}
             )
-            return sum(f.get('amount_total', 0.0) for f in facturas)
+            total = 0.0
+            for f in facturas:
+                monto = f.get('amount_total', 0.0) or 0.0
+                pendiente = f.get('amount_residual', 0.0) or 0.0
+                pagado = monto - pendiente
+                if pagado < 0:
+                    pagado = 0.0
+                total += pagado
+            return total
         except Exception as e:
             print(f"Error obteniendo gasto mensual del cliente: {e}")
             return 0.0
