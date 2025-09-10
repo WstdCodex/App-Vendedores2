@@ -527,15 +527,24 @@ def api_facturas_cliente(cliente_id):
                 facturas = odoo.get_facturas_cliente_mes(
                     cliente_id, year, month, codigo_factura, estado_filtro, company_id=company_id
                 )
+                total_gastado = odoo.get_total_gasto_cliente_mes(
+                    cliente_id, year, month, company_id=company_id
+                )
             except ValueError:
                 facturas = odoo.get_facturas_cliente(
                     cliente_id, codigo_factura, estado_filtro, company_id=company_id
+                )
+                total_gastado = odoo.get_total_gasto_cliente(
+                    cliente_id, company_id=company_id
                 )
         else:
             facturas = odoo.get_facturas_cliente(
                 cliente_id, codigo_factura, estado_filtro, company_id=company_id
             )
-        return jsonify(facturas)
+            total_gastado = odoo.get_total_gasto_cliente(
+                cliente_id, company_id=company_id
+            )
+        return jsonify({'facturas': facturas, 'total_gastado': total_gastado})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
