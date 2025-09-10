@@ -145,10 +145,12 @@ class OdooConnection:
             return []
 
     def get_total_gastos_mes(self, user_id, year, month, company_id=None):
-        """Obtener el total facturado en un mes específico.
+        """Obtener el total efectivamente pagado en un mes específico.
 
         Si ``user_id`` es ``None`` se calcula el total de todos los
-        vendedores; en caso contrario solo del vendedor indicado.
+        vendedores; en caso contrario solo del vendedor indicado. Solo se
+        consideran los montos ya abonados, descartando lo que aún está
+        pendiente de pago.
         """
         try:
             start_date = datetime(year, month, 1).strftime('%Y-%m-%d')
@@ -173,9 +175,17 @@ class OdooConnection:
             facturas = self.models.execute_kw(
                 self.db, self.uid, self.password,
                 'account.move', 'read',
-                [facturas_ids], {'fields': ['amount_total']}
+                [facturas_ids], {'fields': ['amount_total', 'amount_residual']}
             )
-            return sum(f.get('amount_total', 0.0) for f in facturas)
+            total = 0.0
+            for f in facturas:
+                monto = f.get('amount_total', 0.0) or 0.0
+                pendiente = f.get('amount_residual', 0.0) or 0.0
+                pagado = monto - pendiente
+                if pagado < 0:
+                    pagado = 0.0
+                total += pagado
+            return total
         except Exception as e:
             print(f"Error obteniendo total mensual: {e}")
             return 0.0
@@ -252,7 +262,7 @@ class OdooConnection:
 
     def get_clientes_por_ubicacion_mes(self, year, month, provincia_id=None,
                                        ciudad='', user_id=None, company_id=None):
-        """Obtener clientes de una ubicación y su gasto mensual.
+        """Obtener clientes de una ubicación y su gasto mensual pagado.
 
         Parameters
         ----------
@@ -309,29 +319,29 @@ class OdooConnection:
             if user_id is not None:
                 invoice_domain.append(('invoice_user_id', '=', user_id))
 
-            totals = self.models.execute_kw(
+            facturas = self.models.execute_kw(
                 self.db, self.uid, self.password,
-                'account.move', 'read_group', [invoice_domain],
-                {
-                    'fields': ['amount_total:sum'],
-                    'groupby': ['partner_id'],
-                    'lazy': False,
-                },
+                'account.move', 'search_read', [invoice_domain],
+                {'fields': ['partner_id', 'amount_total', 'amount_residual']}
             )
 
-            totals_dict = {}
-            for t in totals:
-                partner = t.get('partner_id')
-                if partner:
-                    total = t.get('amount_total_sum')
-                    if total is None:
-                        total = t.get('amount_total', 0.0)
-                    totals_dict[partner[0]] = total
+            totales = {}
+            for f in facturas:
+                partner = f.get('partner_id')
+                if not partner:
+                    continue
+                partner_id = partner[0] if isinstance(partner, list) else partner
+                monto = f.get('amount_total', 0.0) or 0.0
+                pendiente = f.get('amount_residual', 0.0) or 0.0
+                pagado = monto - pendiente
+                if pagado < 0:
+                    pagado = 0.0
+                totales[partner_id] = totales.get(partner_id, 0.0) + pagado
 
             resultados = []
             total_general = 0.0
             for p in partners:
-                total_cliente = totals_dict.get(p['id'], 0.0)
+                total_cliente = totales.get(p['id'], 0.0)
                 if total_cliente > 0:
                     resultados.append({
                         'id': p['id'],
@@ -600,7 +610,7 @@ class OdooConnection:
 
                 credito = c.get('credit', 0.0)
                 debito = c.get('debit', 0.0)
-                balance = credito - debito
+                balance = debito - credito
                 deuda_total = max(balance, 0.0)
                 saldo_favor = max(-balance, 0.0)
                 clientes_formateados.append(
@@ -676,7 +686,7 @@ class OdooConnection:
 
                 credito = c.get('credit', 0.0)
                 debito = c.get('debit', 0.0)
-                balance = credito - debito
+                balance = debito - credito
                 deuda_total = max(balance, 0.0)
                 saldo_favor = max(-balance, 0.0)
 
@@ -722,7 +732,7 @@ class OdooConnection:
                 c = cliente[0]
                 credito = c.get('credit', 0.0)
                 debito = c.get('debit', 0.0)
-                balance = credito - debito
+                balance = debito - credito
                 deuda_total = max(balance, 0.0)
                 saldo_favor = max(-balance, 0.0)
                 
