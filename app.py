@@ -30,6 +30,22 @@ ODOO_CONFIG = {
     'report_password': 'lks.1822.95',
 }
 
+
+def get_report_connection():
+    """Crear una conexión autenticada con el usuario de reportes.
+
+    Este usuario posee los permisos necesarios para leer información de
+    pagos de facturas que no está disponible para el usuario estándar.
+    """
+    conn = OdooConnection(
+        ODOO_CONFIG['url'],
+        ODOO_CONFIG['db'],
+        ODOO_CONFIG['report_user'],
+        ODOO_CONFIG['report_password'],
+    )
+    conn.authenticate()
+    return conn
+
 @app.route('/')
 def index():
     if 'user_id' in session:
@@ -195,28 +211,30 @@ def cliente_detalle(cliente_id):
 
         cliente_info = odoo.get_cliente(cliente_id, company_id=company_id)
 
+        report_conn = get_report_connection()
+
         if mes_param:
             try:
                 year, month = map(int, mes_param.split('-'))
-                facturas = odoo.get_facturas_cliente_mes(
+                facturas = report_conn.get_facturas_cliente_mes(
                     cliente_id, year, month, company_id=company_id
                 )
-                total_gastado = odoo.get_total_gasto_cliente_mes(
+                total_gastado = report_conn.get_total_gasto_cliente_mes(
                     cliente_id, year, month, company_id=company_id
                 )
             except ValueError:
-                facturas = odoo.get_facturas_cliente(
+                facturas = report_conn.get_facturas_cliente(
                     cliente_id, company_id=company_id
                 )
-                total_gastado = odoo.get_total_gasto_cliente(
+                total_gastado = report_conn.get_total_gasto_cliente(
                     cliente_id, company_id=company_id
                 )
                 mes_param = ''
         else:
-            facturas = odoo.get_facturas_cliente(
+            facturas = report_conn.get_facturas_cliente(
                 cliente_id, company_id=company_id
             )
-            total_gastado = odoo.get_total_gasto_cliente(
+            total_gastado = report_conn.get_total_gasto_cliente(
                 cliente_id, company_id=company_id
             )
 
@@ -244,11 +262,9 @@ def factura_detalle(cliente_id, factura_id):
     mes = request.args.get('mes')
 
     try:
-        odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
-                              session['username'], session['password'])
-        odoo.uid = session['user_id']
+        report_conn = get_report_connection()
 
-        factura = odoo.get_factura(factura_id)
+        factura = report_conn.get_factura(factura_id)
         if not factura:
             flash('Factura no encontrada', 'error')
             return redirect(url_for('cliente_detalle', cliente_id=cliente_id, company_id=company_id, mes=mes))
@@ -264,17 +280,11 @@ def descargar_factura_pdf(factura_id):
         return redirect(url_for('login'))
 
     try:
-        odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
-                              session['username'], session['password'])
-        odoo.uid = session['user_id']
-        factura = odoo.get_factura(factura_id)
+        report_conn = get_report_connection()
+        factura = report_conn.get_factura(factura_id)
         filename = factura.get('nombre', f'factura_{factura_id}') if factura else f'factura_{factura_id}'
 
-        pdf_content = odoo.download_invoice_pdf(
-            factura_id,
-            username=ODOO_CONFIG['report_user'],
-            password=ODOO_CONFIG['report_password']
-        )
+        pdf_content = report_conn.download_invoice_pdf(factura_id)
         if pdf_content:
             response = Response(pdf_content, mimetype='application/pdf')
             response.headers['Content-Disposition'] = (
@@ -518,30 +528,28 @@ def api_facturas_cliente(cliente_id):
     company_id = request.args.get('company_id', type=int)
 
     try:
-        odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
-                              session['username'], session['password'])
-        odoo.uid = session['user_id']
+        report_conn = get_report_connection()
         if mes:
             try:
                 year, month = map(int, mes.split('-'))
-                facturas = odoo.get_facturas_cliente_mes(
+                facturas = report_conn.get_facturas_cliente_mes(
                     cliente_id, year, month, codigo_factura, estado_filtro, company_id=company_id
                 )
-                total_gastado = odoo.get_total_gasto_cliente_mes(
+                total_gastado = report_conn.get_total_gasto_cliente_mes(
                     cliente_id, year, month, company_id=company_id
                 )
             except ValueError:
-                facturas = odoo.get_facturas_cliente(
+                facturas = report_conn.get_facturas_cliente(
                     cliente_id, codigo_factura, estado_filtro, company_id=company_id
                 )
-                total_gastado = odoo.get_total_gasto_cliente(
+                total_gastado = report_conn.get_total_gasto_cliente(
                     cliente_id, company_id=company_id
                 )
         else:
-            facturas = odoo.get_facturas_cliente(
+            facturas = report_conn.get_facturas_cliente(
                 cliente_id, codigo_factura, estado_filtro, company_id=company_id
             )
-            total_gastado = odoo.get_total_gasto_cliente(
+            total_gastado = report_conn.get_total_gasto_cliente(
                 cliente_id, company_id=company_id
             )
         return jsonify({'facturas': facturas, 'total_gastado': total_gastado})
