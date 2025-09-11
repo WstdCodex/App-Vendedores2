@@ -89,9 +89,9 @@
 
 {% block extra_js %}
 
-{% set pdf_url = url_for('descargar_factura_pdf', factura_id=factura.id, _external=True) %}
+{% set pdf_path = url_for('descargar_factura_pdf', factura_id=factura.id) %}
 <script>
-const pdfUrl = '{{ pdf_url }}';
+const pdfUrl = `${window.location.origin}${'{{ pdf_path }}'}`;
 let downloadedFile = null;
 
 async function fetchPdf() {
