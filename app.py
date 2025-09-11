@@ -46,13 +46,13 @@ def get_report_connection():
     conn.authenticate()
     return conn
 
-@app.route('/')
+@app.route('/vendedores/')
 def index():
     if 'user_id' in session:
         return redirect(url_for('dashboard'))
     return redirect(url_for('login'))
 
-@app.route('/login', methods=['GET', 'POST'])
+@app.route('/vendedores/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         username = request.form.get('username')
@@ -76,13 +76,13 @@ def login():
     
     return render_template('login.html')
 
-@app.route('/logout')
+@app.route('/vendedores/logout')
 def logout():
     session.clear()
     flash('Sesión cerrada correctamente', 'info')
     return redirect(url_for('login'))
 
-@app.route('/dashboard')
+@app.route('/vendedores/dashboard')
 def dashboard():
     if 'user_id' not in session:
         return redirect(url_for('login'))
@@ -90,7 +90,7 @@ def dashboard():
     return render_template('dashboard.html', user_name=session.get('user_name', 'Usuario'))
 
 
-@app.route('/estadistico')
+@app.route('/vendedores/estadistico')
 def estadistico():
     if 'user_id' not in session:
         return redirect(url_for('login'))
@@ -194,7 +194,7 @@ def estadistico():
         company_id=company_id,
     )
 
-@app.route('/clientes')
+@app.route('/vendedores/clientes')
 def clientes():
     if 'user_id' not in session:
         return redirect(url_for('login'))
@@ -215,7 +215,7 @@ def clientes():
     return render_template('clientes.html', clientes=[], mostrar_todo=mostrar_todo,
                            companias=companias)
 
-@app.route('/clientes/<int:cliente_id>')
+@app.route('/vendedores/clientes/<int:cliente_id>')
 def cliente_detalle(cliente_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
@@ -274,7 +274,7 @@ def cliente_detalle(cliente_id):
             return redirect(return_url)
         return redirect(url_for('clientes'))
 
-@app.route('/clientes/<int:cliente_id>/factura/<int:factura_id>')
+@app.route('/vendedores/clientes/<int:cliente_id>/factura/<int:factura_id>')
 def factura_detalle(cliente_id, factura_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
@@ -295,7 +295,7 @@ def factura_detalle(cliente_id, factura_id):
         flash(f'Error al cargar factura: {str(e)}', 'error')
         return redirect(url_for('cliente_detalle', cliente_id=cliente_id, company_id=company_id, mes=mes))
 
-@app.route('/facturas/<int:factura_id>/pdf')
+@app.route('/vendedores/facturas/<int:factura_id>/pdf')
 def descargar_factura_pdf(factura_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
@@ -400,7 +400,7 @@ def descargar_factura_pdf(factura_id):
         return redirect(request.referrer or url_for('dashboard'))
 
 
-@app.route('/api/buscar-facturas')
+@app.route('/vendedores/api/buscar-facturas')
 def buscar_facturas():
     if 'user_id' not in session:
         return jsonify({'error': 'No autorizado'}), 401
@@ -418,7 +418,7 @@ def buscar_facturas():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/provincias')
+@app.route('/vendedores/api/provincias')
 def api_provincias():
     if 'user_id' not in session:
         return jsonify({'error': 'No autorizado'}), 401
@@ -432,7 +432,7 @@ def api_provincias():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/vendedores')
+@app.route('/vendedores/api/vendedores')
 def api_vendedores():
     if 'user_id' not in session:
         return jsonify({'error': 'No autorizado'}), 401
@@ -451,7 +451,7 @@ def api_vendedores():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/ciudades')
+@app.route('/vendedores/api/ciudades')
 def api_ciudades():
     if 'user_id' not in session:
         return jsonify({'error': 'No autorizado'}), 401
@@ -480,7 +480,7 @@ def api_ciudades():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/buscar-clientes')
+@app.route('/vendedores/api/buscar-clientes')
 def api_buscar_clientes():
     if 'user_id' not in session:
         return jsonify({'error': 'No autorizado'}), 401
@@ -538,7 +538,7 @@ def api_buscar_clientes():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/cliente/<int:cliente_id>/facturas')
+@app.route('/vendedores/api/cliente/<int:cliente_id>/facturas')
 def api_facturas_cliente(cliente_id):
     if 'user_id' not in session:
         return jsonify({'error': 'No autorizado'}), 401
