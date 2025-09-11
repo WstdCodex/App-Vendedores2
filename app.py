@@ -1,5 +1,6 @@
 # app.py
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, Response
+from flask_cors import CORS
 from odoo_connection import OdooConnection
 from datetime import datetime
 from io import BytesIO
@@ -8,6 +9,7 @@ from reportlab.pdfgen import canvas
 import os
 
 app = Flask(__name__, static_url_path = '/vendedores/static')
+CORS(app, resources={r"/vendedores/*": {"origins": "*"}}, supports_credentials=True)
 app.secret_key = 'tu_clave_secreta_aqui'  # Cambiar por una clave segura
 
 
