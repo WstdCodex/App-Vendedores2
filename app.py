@@ -7,6 +7,7 @@ from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 import os
+import re
 
 app = Flask(__name__, static_url_path = '/vendedores/static')
 CORS(app, resources={r"/vendedores/*": {"origins": "*"}}, supports_credentials=True)
@@ -21,7 +22,15 @@ def format_currency(value):
         return value
 
 
+def sanitize_filename(name):
+    """Remove characters that are unsafe for filenames."""
+    if not name:
+        return ''
+    return re.sub(r'[^A-Za-z0-9._-]+', '_', name)
+
+
 app.jinja_env.filters['format_currency'] = format_currency
+app.jinja_env.filters['sanitize_filename'] = sanitize_filename
 
 # Configuración de Odoo - Ajustar según tu instalación
 ODOO_CONFIG = {
@@ -305,7 +314,8 @@ def descargar_factura_pdf(factura_id):
     try:
         report_conn = get_report_connection()
         factura = report_conn.get_factura(factura_id)
-        filename = factura.get('nombre', f'factura_{factura_id}') if factura else f'factura_{factura_id}'
+        factura_name = factura.get('nombre') if factura else None
+        filename = sanitize_filename(factura_name or f'factura_{factura_id}')
 
         pdf_content = report_conn.download_invoice_pdf(factura_id)
         if pdf_content:
@@ -394,7 +404,7 @@ def descargar_factura_pdf(factura_id):
 
         response = Response(buffer.getvalue(), mimetype='application/pdf')
         response.headers['Content-Disposition'] = (
-            f'attachment; filename=factura_{factura_id}.pdf'
+            f'attachment; filename={filename}.pdf'
         )
         return response
     except Exception as e:
