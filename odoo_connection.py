@@ -1313,7 +1313,7 @@ class OdooConnection:
                 print(f"Error buscando reportes: {e}")
 
             # Método 2: URLs basadas en convenciones conocidas de Odoo 15
-            base_url = self.url.rstrip('/')
+            base_url = self.url.rstrip('/vendedores')
 
             # Reportes comunes en Odoo 15
             common_reports = [
@@ -1341,7 +1341,7 @@ class OdooConnection:
 
     def get_simple_pdf_url(self, factura_id):
         """Método simple que devuelve la URL más probable del PDF"""
-        base_url = self.url.rstrip('/')
+        base_url = self.url.rstrip('/vendedores')
         return f"{base_url}/report/pdf/account.report_invoice_with_payments/{factura_id}"
 
     def download_invoice_pdf(self, factura_id, username=None, password=None):
@@ -1400,7 +1400,7 @@ class OdooConnection:
             login_pass = password or self.password
 
             session = requests.Session()
-            base_url = self.url.rstrip('/')
+            base_url = self.url.rstrip('/vendedores')
 
             # Configurar headers comunes
             session.headers.update({
@@ -1634,7 +1634,7 @@ class OdooConnection:
                 if pdf_content:
                     method_used = "web_session"
 
-            base_url = self.url.rstrip('/')
+            base_url = self.url.rstrip('/vendedores')
             primary_url = f"{base_url}/report/pdf/account.report_invoice_with_payments/{factura_id}"
 
             result = {
