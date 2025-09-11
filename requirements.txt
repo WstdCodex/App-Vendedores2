@@ -1,6 +1,7 @@
 # requirements.txt
 Flask==2.3.3
 Werkzeug==2.3.7
+Flask-Cors==4.0.0
 reportlab==3.6.12
 requests==2.31.0
 

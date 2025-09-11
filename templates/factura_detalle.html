@@ -90,7 +90,7 @@
 {% block extra_js %}
 
 
-{% set pdf_url = url_for('descargar_factura_pdf', factura_id=factura.id) %}
+{% set pdf_url = url_for('descargar_factura_pdf', factura_id=factura.id, _external=False) %}
 
 <script>
 // URL absoluto para la descarga del PDF generado en el servidor.
@@ -99,7 +99,7 @@ const pdfUrl = {{ pdf_url | tojson }};
 let downloadedFile = null;
 
 async function fetchPdf() {
-    const response = await fetch(pdfUrl);
+    const response = await fetch(pdfUrl, { credentials: 'include' });
     if (!response.ok) throw new Error('No se pudo obtener el PDF');
     const blob = await response.blob();
     downloadedFile = new File([blob], 'factura_{{ factura.id }}.pdf', { type: 'application/pdf' });
