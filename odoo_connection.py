@@ -188,6 +188,43 @@ class OdooConnection:
             print(f"Error obteniendo total mensual: {e}")
             return 0.0
 
+    def get_total_gastos_anio(self, user_id, year, company_id=None):
+        """Obtener el total efectivamente pagado en un año específico."""
+        try:
+            start_date = datetime(year, 1, 1).strftime('%Y-%m-%d')
+            end_date = datetime(year, 12, 31).strftime('%Y-%m-%d')
+            domain = [
+                ('move_type', '=', 'out_invoice'),
+                ('state', '!=', 'draft'),
+                ('invoice_date', '>=', start_date),
+                ('invoice_date', '<=', end_date),
+            ]
+            if user_id is not None:
+                domain.append(('invoice_user_id', '=', user_id))
+            if company_id is not None:
+                domain.append(('company_id', '=', company_id))
+            facturas_ids = self.models.execute_kw(
+                self.db, self.uid, self.password,
+                'account.move', 'search', [domain]
+            )
+            if not facturas_ids:
+                return 0.0
+            facturas = self.models.execute_kw(
+                self.db, self.uid, self.password,
+                'account.move', 'read',
+                [facturas_ids], {'fields': ['amount_total', 'amount_residual']}
+            )
+            total = 0.0
+            for f in facturas:
+                monto = f.get('amount_total', 0.0) or 0.0
+                pendiente = f.get('amount_residual', 0.0) or 0.0
+                pagado = monto - pendiente
+                total += pagado
+            return total
+        except Exception as e:
+            print(f"Error obteniendo total anual: {e}")
+            return 0.0
+
     def get_total_gasto_cliente_mes(self, partner_id, year, month, company_id=None):
         """Obtener el total pagado por un cliente en un mes específico.
 
@@ -365,6 +402,83 @@ class OdooConnection:
             return resultados, total_general
         except Exception as e:
             print(f"Error obteniendo clientes por ubicación: {e}")
+            return [], 0.0
+
+    def get_clientes_por_ubicacion_anio(self, year, provincia_id=None,
+                                        ciudad='', user_id=None, company_id=None):
+        """Obtener clientes de una ubicación y su gasto anual pagado."""
+        try:
+            domain = [
+                ('customer_rank', '>', 0),
+                ('parent_id', '=', False),
+            ]
+            if user_id is not None:
+                domain.append(('user_id', '=', user_id))
+            if provincia_id:
+                domain.append(('state_id', '=', provincia_id))
+            if ciudad:
+                domain.append(('city', 'ilike', ciudad))
+
+            partners = self.models.execute_kw(
+                self.db, self.uid, self.password,
+                'res.partner', 'search_read', [domain],
+                {'fields': ['name']}
+            )
+
+            if not partners:
+                return [], 0.0
+
+            partner_ids = [p['id'] for p in partners]
+            start_date = datetime(year, 1, 1).strftime('%Y-%m-%d')
+            end_date = datetime(year, 12, 31).strftime('%Y-%m-%d')
+
+            invoice_domain = [
+                ('move_type', '=', 'out_invoice'),
+                ('state', '=', 'posted'),
+                ('invoice_date', '>=', start_date),
+                ('invoice_date', '<=', end_date),
+                ('partner_id', 'in', partner_ids),
+            ]
+            if company_id is not None:
+                invoice_domain.append(('company_id', '=', company_id))
+            if user_id is not None:
+                invoice_domain.append(('invoice_user_id', '=', user_id))
+
+            facturas = self.models.execute_kw(
+                self.db, self.uid, self.password,
+                'account.move', 'search_read', [invoice_domain],
+                {'fields': ['partner_id', 'amount_total', 'amount_residual']}
+            )
+
+            totales = {}
+            for f in facturas:
+                partner = f.get('partner_id')
+                if not partner:
+                    continue
+                partner_id = partner[0] if isinstance(partner, list) else partner
+                monto = f.get('amount_total', 0.0) or 0.0
+                pendiente = f.get('amount_residual', 0.0) or 0.0
+                pagado = monto - pendiente
+                if pagado < 0:
+                    pagado = 0.0
+                totales[partner_id] = totales.get(partner_id, 0.0) + pagado
+
+            resultados = []
+            total_general = 0.0
+            for p in partners:
+                total_cliente = totales.get(p['id'], 0.0)
+                if total_cliente > 0 or company_id is not None:
+                    resultados.append({
+                        'id': p['id'],
+                        'nombre': p['name'],
+                        'total_mes': total_cliente,
+                    })
+                total_general += total_cliente
+
+            resultados.sort(key=lambda x: x['total_mes'], reverse=True)
+            return resultados, total_general
+        except Exception as e:
+            print(f"Error obteniendo clientes por ubicación en el año: {e}")
             return [], 0.0
 
     def get_total_gastos(self, user_id=None, company_id=None):
