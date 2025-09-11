@@ -96,6 +96,7 @@ def estadistico():
         return redirect(url_for('login'))
 
     mes_param = request.args.get('mes')
+    anio_param = request.args.get('anio', type=int)
     provincia_id = request.args.get('provincia_id', type=int)
     ciudad = request.args.get('ciudad', '')
     vendedor_id = request.args.get('vendedor_id', type=int)
@@ -105,9 +106,11 @@ def estadistico():
         if mes_param:
             year, month = map(int, mes_param.split('-'))
         else:
-            year = month = None
+            year = anio_param
+            month = None
     except ValueError:
-        year = month = None
+        year = anio_param
+        month = None
 
     try:
         odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
@@ -131,6 +134,10 @@ def estadistico():
             total_general = odoo.get_total_gastos_mes(
                 user_id_param, year, month, company_id
             )
+        elif year:
+            total_general = odoo.get_total_gastos_anio(
+                user_id_param, year, company_id
+            )
         else:
             total_general = odoo.get_total_gastos(
                 user_id_param, company_id
@@ -148,6 +155,11 @@ def estadistico():
         if year and month:
             clientes, total_filtrado = odoo.get_clientes_por_ubicacion_mes(
                 year, month, provincia_id=provincia_id, ciudad=ciudad,
+                user_id=user_id_param, company_id=company_id
+            )
+        elif year:
+            clientes, total_filtrado = odoo.get_clientes_por_ubicacion_anio(
+                year, provincia_id=provincia_id, ciudad=ciudad,
                 user_id=user_id_param, company_id=company_id
             )
         else:
@@ -168,6 +180,7 @@ def estadistico():
         'estadistico.html',
         total=total,
         mes=selected_month,
+        anio=year,
         provincias=provincias,
         ciudades=ciudades,
         provincia_id=provincia_id,
