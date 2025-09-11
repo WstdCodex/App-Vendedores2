@@ -89,7 +89,9 @@
 
 {% block extra_js %}
 
-{% set pdf_url = url_for('descargar_factura_pdf', factura_id=factura.id, _external=True) %}
+
+{% set pdf_url = url_for('descargar_factura_pdf', factura_id=factura.id, _external=False) %}
+
 <script>
 // URL absoluto para la descarga del PDF generado en el servidor.
 // "tojson" asegura que los caracteres especiales sean manejados correctamente.
