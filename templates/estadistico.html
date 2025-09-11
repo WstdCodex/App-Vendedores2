@@ -14,14 +14,32 @@
         </div>
         <div class="card">
             <div class="card-body">
-                <form method="get" class="row g-3 align-items-end">
+                <form method="get" class="row g-3 align-items-end" onsubmit="prepararMes()">
                     <div class="col-md-2">
                         <label class="form-label fw-semibold">Mes:</label>
-                        <input type="month" name="mes" class="form-control" value="{{ mes }}">
+                        <div class="d-flex">
+                            <select id="filtroMes" class="form-select me-2">
+                                <option value="">Todos</option>
+                                <option value="01">Enero</option>
+                                <option value="02">Febrero</option>
+                                <option value="03">Marzo</option>
+                                <option value="04">Abril</option>
+                                <option value="05">Mayo</option>
+                                <option value="06">Junio</option>
+                                <option value="07">Julio</option>
+                                <option value="08">Agosto</option>
+                                <option value="09">Septiembre</option>
+                                <option value="10">Octubre</option>
+                                <option value="11">Noviembre</option>
+                                <option value="12">Diciembre</option>
+                            </select>
+                            <input type="number" class="form-control" id="filtroAnio" min="2000" max="2100">
+                        </div>
+                        <input type="hidden" name="mes" id="mesHidden">
                     </div>
                     <div class="col-md-2">
                         <label class="form-label fw-semibold">Compañía:</label>
-                        <select name="company_id" class="form-select" onchange="this.form.submit()">
+                        <select name="company_id" class="form-select" onchange="prepararMes(); this.form.submit()">
                             <option value="">Todas</option>
                             {% for c in companias %}
                             <option value="{{ c.id }}" {% if c.id == company_id %}selected{% endif %}>{{ c.nombre }}</option>
@@ -31,7 +49,7 @@
                     {% if mostrar_todo %}
                     <div class="col-md-2">
                         <label class="form-label fw-semibold">Comercial:</label>
-                        <select name="vendedor_id" class="form-select" onchange="this.form.submit()">
+                        <select name="vendedor_id" class="form-select" onchange="prepararMes(); this.form.submit()">
                             <option value="">Todos</option>
                             {% for v in vendedores %}
                             <option value="{{ v.id }}" {% if v.id == vendedor_id %}selected{% endif %}>{{ v.nombre }}</option>
@@ -41,7 +59,7 @@
                     {% endif %}
                     <div class="{% if mostrar_todo %}col-md-2{% else %}col-md-3{% endif %}">
                         <label class="form-label fw-semibold">Provincia:</label>
-                        <select name="provincia_id" class="form-select" onchange="this.form.submit()">
+                        <select name="provincia_id" class="form-select" onchange="prepararMes(); this.form.submit()">
                             <option value="">Todas</option>
                             {% for p in provincias %}
                             <option value="{{ p.id }}" {% if p.id == provincia_id %}selected{% endif %}>{{ p.nombre }}</option>
@@ -50,7 +68,7 @@
                     </div>
                     <div class="{% if mostrar_todo %}col-md-2{% else %}col-md-3{% endif %}">
                         <label class="form-label fw-semibold">Ciudad:</label>
-                        <select name="ciudad" class="form-select" onchange="this.form.submit()">
+                        <select name="ciudad" class="form-select" onchange="prepararMes(); this.form.submit()">
                             <option value="">Todas</option>
                             {% for c in ciudades %}
                             <option value="{{ c.nombre }}" {% if c.nombre == ciudad %}selected{% endif %}>{{ c.nombre }}</option>
@@ -65,7 +83,7 @@
                 </form>
                 {% if total is not none %}
                 <div class="text-center mt-4">
-                    <h4 class="fw-bold">Total facturado este mes</h4>
+                    <h4 class="fw-bold">Total facturado{% if mes %} este mes{% endif %}</h4>
                     <p class="display-6 text-primary">$ {{ total|format_currency }}</p>
                 </div>
                 {% endif %}
@@ -76,7 +94,11 @@
                         {% if provincia_id or ciudad %}
                             Clientes en la ubicación seleccionada
                         {% else %}
-                            Clientes que facturaron en el mes
+                            {% if mes %}
+                                Clientes que facturaron en el mes
+                            {% else %}
+                                Clientes que facturaron
+                            {% endif %}
                         {% endif %}
                     </h5>
                     <div class="table-responsive">
@@ -84,7 +106,7 @@
                             <thead>
                                 <tr>
                                     <th>Cliente</th>
-                                    <th class="text-end">Total del mes</th>
+                                    <th class="text-end">Total{% if mes %} del mes{% endif %}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -101,14 +123,44 @@
                         {% if provincia_id or ciudad %}
                             Total ubicación: $ {{ total_filtrado|format_currency }}
                         {% else %}
-                            Total mes: $ {{ total_filtrado|format_currency }}
+                            Total{% if mes %} mes{% endif %}: $ {{ total_filtrado|format_currency }}
                         {% endif %}
                     </div>
                 </div>
                 {% endif %}
             </div>
         </div>
-    </div>
 </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const mesParam = "{{ mes or '' }}";
+    const mesElem = document.getElementById('filtroMes');
+    const anioElem = document.getElementById('filtroAnio');
+    if (mesParam) {
+        const parts = mesParam.split('-');
+        if (parts.length === 2) {
+            anioElem.value = parts[0];
+            mesElem.value = parts[1];
+        }
+    } else {
+        const now = new Date();
+        anioElem.value = now.getFullYear();
+    }
+});
+function prepararMes() {
+    const mesSel = document.getElementById('filtroMes').value;
+    const anioVal = document.getElementById('filtroAnio').value;
+    const hidden = document.getElementById('mesHidden');
+    if (mesSel && anioVal) {
+        hidden.value = `${anioVal}-${mesSel}`;
+    } else {
+        hidden.value = '';
+    }
+}
+</script>
 {% endblock %}
 
