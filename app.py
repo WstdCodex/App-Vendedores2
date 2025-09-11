@@ -7,7 +7,7 @@ from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 import os
 
-app = Flask(__name__)
+app = Flask(__name__, static_url_path = '/vendedores')
 app.secret_key = 'tu_clave_secreta_aqui'  # Cambiar por una clave segura
 
 
