@@ -189,7 +189,7 @@ function buscarFacturasCliente() {
     if (estadoFiltro) params.append('estado', estadoFiltro);
     if (mes) params.append('mes', mes);
     if (COMPANY_ID) params.append('company_id', COMPANY_ID);
-    fetch(`/api/cliente/${CLIENTE_ID}/facturas?${params.toString()}`)
+    fetch(`/vendedores/api/cliente/${CLIENTE_ID}/facturas?${params.toString()}`)
         .then(response => response.json())
         .then(data => {
             ocultarLoading();
