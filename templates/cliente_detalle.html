@@ -226,7 +226,7 @@ function actualizarTablaFacturas(facturas) {
 
     tbody.innerHTML = facturas.map(factura => `
         <tr>
-            <td class="fw-bold"><a href="/clientes/${CLIENTE_ID}/factura/${factura.id}${linkParams.toString() ? `?${linkParams.toString()}` : ''}" class="text-decoration-none">${factura.nombre}</a></td>
+            <td class="fw-bold"><a href="/vendedores/clientes/${CLIENTE_ID}/factura/${factura.id}${linkParams.toString() ? `?${linkParams.toString()}` : ''}" class="text-decoration-none">${factura.nombre}</a></td>
             <td>${factura.fecha}</td>
             <td class="fw-semibold text-success">${factura.total.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             <td class="fw-semibold text-primary">${factura.pagado.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
