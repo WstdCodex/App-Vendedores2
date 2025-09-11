@@ -336,7 +336,7 @@ def descargar_factura_pdf(factura_id):
 
         # Dibujar el logo en la esquina superior izquierda
 
-        logo_path = os.path.join(app.root_path, 'static', 'standard_logo.png')
+        logo_path = os.path.join(app.root_path, 'static', 'logosinfondo.png')
 
         logo_w, logo_h = 120, 40
         try:
