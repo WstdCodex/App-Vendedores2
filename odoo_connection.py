@@ -1292,7 +1292,7 @@ class OdooConnection:
                     print(f"Usando reporte - ID: {report_id}, Nombre: {report_name}")
 
                     # Construir URL simple y directa
-                    base_url = self.url.rstrip('/')
+                    base_url = self.url.rstrip('/vendedores')
 
                     # Diferentes formatos de URL que pueden funcionar
                     possible_urls = [
