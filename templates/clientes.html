@@ -1,4 +1,4 @@
-<!-- templates/clientes.html -->
+<!-- templates/vendedores/clientes.html -->
 {% extends "base.html" %}
 
 {% block title %}Clientes - App Vendedores{% endblock %}
@@ -163,13 +163,13 @@ function actualizarListaClientes(clientes) {
     const linkParams = new URLSearchParams();
     if (mes) linkParams.append('mes', mes);
     if (companyId) linkParams.append('company_id', companyId);
-    const returnUrl = `/clientes${linkParams.toString() ? `?${linkParams.toString()}` : ''}`;
+    const returnUrl = `/vendedores/clientes${linkParams.toString() ? `?${linkParams.toString()}` : ''}`;
     const detailParams = new URLSearchParams(linkParams.toString());
     detailParams.append('return_url', returnUrl);
     const queryStr = detailParams.toString();
 
     lista.innerHTML = clientes.map(c => `
-        <a href="/clientes/${c.id}${queryStr ? `?${queryStr}` : ''}" class="text-decoration-none text-dark">
+        <a href="/vendedores/clientes/${c.id}${queryStr ? `?${queryStr}` : ''}" class="text-decoration-none text-dark">
             <div class="card cliente-card">
                 <div class="card-body">
                     <h5 class="fw-bold text-primary">
