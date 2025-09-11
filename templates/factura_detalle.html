@@ -158,14 +158,14 @@ whatsappShare.href = '#';
 whatsappShare.addEventListener('click', async (e) => {
     e.preventDefault();
     try {
-
         const shared = await shareViaNavigator();
-        if (shared) return;
-
+        if (!shared) {
+            alert('No se pudo compartir el archivo. Tu dispositivo o navegador no soporta compartir archivos.');
+        }
     } catch (err) {
-        // Si no se puede compartir el archivo, se continúa con el enlace
+        console.error('Error al compartir el archivo:', err);
+        alert('Ocurrió un error al intentar compartir el archivo.');
     }
-    window.open(`https://wa.me/?text=${encodeURIComponent(pdfUrl)}`, '_blank');
 });
 
 const gmailShare = document.getElementById('gmailShare');
