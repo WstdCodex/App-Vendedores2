@@ -126,7 +126,7 @@ function buscarClientes() {
     if (mes) params.append('mes', mes);
     params.append('limite', limite);
     if (adeudados) params.append('adeudados', '1');
-    fetch(`/api/buscar-clientes?${params.toString()}`)
+    fetch(`/vendedores/api/buscar-clientes?${params.toString()}`)
         .then(response => response.json())
         .then(data => {
             ocultarLoading();
@@ -199,7 +199,7 @@ document.getElementById('buscarCliente').addEventListener('input', function() {
 });
 
 function cargarProvincias() {
-    fetch('/api/provincias')
+    fetch('/vendedores/api/provincias')
         .then(r => r.json())
         .then(data => {
             const select = document.getElementById('filtroProvincia');
@@ -219,7 +219,7 @@ function cargarCiudades() {
     if (provinciaId) params.append('provincia_id', provinciaId);
     if (vendedorId) params.append('vendedor_id', vendedorId);
     if (companyId) params.append('company_id', companyId);
-    const url = `/api/ciudades${params.toString() ? '?' + params.toString() : ''}`;
+    const url = `/vendedores/api/ciudades${params.toString() ? '?' + params.toString() : ''}`;
     fetch(url)
         .then(r => r.json())
         .then(data => {
@@ -231,7 +231,7 @@ function cargarCiudades() {
 }
 
 function cargarVendedores() {
-    fetch('/api/vendedores')
+    fetch('/vendedores/api/vendedores')
         .then(r => r.json())
         .then(data => {
             const select = document.getElementById('filtroVendedor');
