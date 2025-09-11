@@ -77,9 +77,6 @@
                     <a id="instagramShare" class="btn btn-warning" target="_blank">
                         <i class="fab fa-instagram me-2"></i>Instagram
                     </a>
-                    <button type="button" class="btn btn-primary" id="printButton">
-                        <i class="fas fa-print me-2"></i>Imprimir
-                    </button>
                 </div>
             </div>
         </div>
@@ -200,14 +197,5 @@ instagramShare.addEventListener('click', async (e) => {
     window.open(`https://www.instagram.com/?url=${encodeURIComponent(pdfUrl)}`, '_blank');
 });
 
-document.getElementById('printButton').addEventListener('click', function() {
-    const printWindow = window.open(pdfUrl, '_blank');
-    if (printWindow) {
-        printWindow.addEventListener('load', function() {
-            printWindow.print();
-        }, { once: true });
-    }
-
-});
 </script>
 {% endblock %}
