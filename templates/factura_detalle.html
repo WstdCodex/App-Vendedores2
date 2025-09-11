@@ -82,6 +82,11 @@
         </div>
     </div>
 </div>
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="downloadToast" class="toast text-white bg-primary" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false" style="cursor: pointer;">
+        <div id="toastMessage" class="toast-body"></div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -96,6 +101,10 @@
 const pdfUrl = {{ pdf_url | tojson }};
 const invoiceFilename = {{ invoice_filename | tojson }};
 let downloadedFile = null;
+const toastEl = document.getElementById('downloadToast');
+const toastBody = document.getElementById('toastMessage');
+const toast = new bootstrap.Toast(toastEl, { autohide: false });
+let openUrl = null;
 
 async function fetchPdf() {
     const response = await fetch(pdfUrl, { credentials: 'include' });
@@ -107,16 +116,31 @@ async function fetchPdf() {
 
 document.getElementById('download-pdf').addEventListener('click', async () => {
     try {
+        toastEl.onclick = null;
+        toastBody.textContent = 'Descargando PDF...';
+        toast.show();
         const blob = await fetchPdf();
         const url = window.URL.createObjectURL(blob);
+        openUrl = url;
+
         const a = document.createElement('a');
         a.href = url;
         a.download = `${invoiceFilename}.pdf`;
         document.body.appendChild(a);
         a.click();
         a.remove();
-        window.URL.revokeObjectURL(url);
+
+        toastBody.textContent = 'Descarga completa. Toca para abrir.';
+        toastEl.onclick = () => {
+            window.open(openUrl, '_blank');
+            toast.hide();
+            setTimeout(() => {
+                window.URL.revokeObjectURL(openUrl);
+                openUrl = null;
+            }, 1000);
+        };
     } catch (err) {
+        toastBody.textContent = 'Error al descargar el PDF';
         console.error(err);
     }
 });
