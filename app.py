@@ -95,22 +95,19 @@ def estadistico():
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
-    mes = request.args.get('mes')
+    mes_param = request.args.get('mes')
     provincia_id = request.args.get('provincia_id', type=int)
     ciudad = request.args.get('ciudad', '')
     vendedor_id = request.args.get('vendedor_id', type=int)
     company_id = request.args.get('company_id', type=int)
-    mes = request.args.get('mes')
 
     try:
-        if mes:
-            year, month = map(int, mes.split('-'))
+        if mes_param:
+            year, month = map(int, mes_param.split('-'))
         else:
-            now = datetime.now()
-            year, month = now.year, now.month
+            year = month = None
     except ValueError:
-        now = datetime.now()
-        year, month = now.year, now.month
+        year = month = None
 
     try:
         odoo = OdooConnection(ODOO_CONFIG['url'], ODOO_CONFIG['db'],
@@ -130,9 +127,14 @@ def estadistico():
             vendedores = []
             user_id_param = session['user_id']
 
-        total_general = odoo.get_total_gastos_mes(
-            user_id_param, year, month, company_id
-        )
+        if year and month:
+            total_general = odoo.get_total_gastos_mes(
+                user_id_param, year, month, company_id
+            )
+        else:
+            total_general = odoo.get_total_gastos(
+                user_id_param, company_id
+            )
 
         provincias = odoo.get_provincias()
         ciudades = []
@@ -143,10 +145,16 @@ def estadistico():
                 company_id=company_id,
             )
 
-        clientes, total_filtrado = odoo.get_clientes_por_ubicacion_mes(
-            year, month, provincia_id=provincia_id, ciudad=ciudad,
-            user_id=user_id_param, company_id=company_id
-        )
+        if year and month:
+            clientes, total_filtrado = odoo.get_clientes_por_ubicacion_mes(
+                year, month, provincia_id=provincia_id, ciudad=ciudad,
+                user_id=user_id_param, company_id=company_id
+            )
+        else:
+            clientes, total_filtrado = odoo.get_clientes_por_ubicacion(
+                provincia_id=provincia_id, ciudad=ciudad,
+                user_id=user_id_param, company_id=company_id
+            )
     except Exception as e:
         flash(f'Error al cargar estadísticas: {str(e)}', 'error')
         total_general = None
@@ -154,7 +162,7 @@ def estadistico():
         clientes, total_filtrado = [], 0.0
         mostrar_todo = False
 
-    selected_month = f"{year:04d}-{month:02d}"
+    selected_month = mes_param or ''
     total = total_filtrado if (provincia_id or ciudad) else total_general
     return render_template(
         'estadistico.html',
